@@ -20,7 +20,7 @@
   --color-destructive-foreground: #ffffff;
   --color-input: rgba(255,255,255,0.08);
   --color-ring: rgba(68,170,255,0.5);
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --radius: 0.75rem;
 }

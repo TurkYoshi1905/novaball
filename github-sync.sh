@@ -107,6 +107,7 @@ if [ "$MODE" = "push" ]; then
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.4",
+    "lucide-react": "^0.513.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "tailwindcss": "^4.1.14",
