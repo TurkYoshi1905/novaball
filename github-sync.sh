@@ -86,16 +86,10 @@ if [ "$MODE" = "push" ]; then
   fi
 
   # supabase/ — SQL şema dosyaları
-  if [ -d "$WORKSPACE/.migration-backup/supabase" ]; then
-    cp -r "$WORKSPACE/.migration-backup/supabase" "$DEPLOY_TMP/supabase"
-    SQL_COUNT=$(find "$WORKSPACE/.migration-backup/supabase" -name "*.sql" | wc -l | tr -d ' ')
+  if [ -d "$WORKSPACE/supabase" ]; then
+    cp -r "$WORKSPACE/supabase" "$DEPLOY_TMP/supabase"
+    SQL_COUNT=$(find "$WORKSPACE/supabase" -name "*.sql" | wc -l | tr -d ' ')
     echo "  ✓ supabase/ kopyalandı ($SQL_COUNT SQL dosyası)."
-  fi
-
-  # .migration-backup/ (versiyon geçmiş notları)
-  if [ -d "$WORKSPACE/.migration-backup" ]; then
-    cp -r "$WORKSPACE/.migration-backup" "$DEPLOY_TMP/.migration-backup"
-    echo "  ✓ .migration-backup/ kopyalandı."
   fi
 
   echo ""
@@ -215,7 +209,7 @@ VERCEL
   fi
 
   # github-sync.sh (bu scriptin kendisi)
-  cp "$WORKSPACE/.migration-backup/github-sync.sh" "$DEPLOY_TMP/github-sync.sh"
+  cp "$WORKSPACE/github-sync.sh" "$DEPLOY_TMP/github-sync.sh"
   chmod +x "$DEPLOY_TMP/github-sync.sh"
   echo "  ✓ github-sync.sh eklendi."
 
