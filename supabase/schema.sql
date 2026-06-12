@@ -293,10 +293,94 @@ CREATE POLICY "match_history_own_insert"
   );
 
 
+-- ─── matchmaking_queue ───────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS matchmaking_queue (
+  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  username     TEXT        NOT NULL REFERENCES players(username) ON DELETE CASCADE,
+  display_name TEXT        NOT NULL DEFAULT '',
+  game_mode    TEXT        NOT NULL,
+  status       TEXT        NOT NULL DEFAULT 'searching',
+  match_id     UUID,
+  joined_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT mq_mode_valid   CHECK (game_mode IN ('1v1','2v2','3v3','4v4','5v5')),
+  CONSTRAINT mq_status_valid CHECK (status IN ('searching','matched','cancelled')),
+  CONSTRAINT mq_unique_user  UNIQUE (username)
+);
+
+CREATE INDEX IF NOT EXISTS idx_mq_mode_status ON matchmaking_queue (game_mode, status, joined_at);
+
+ALTER TABLE matchmaking_queue ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "mq_public_read"  ON matchmaking_queue;
+DROP POLICY IF EXISTS "mq_own_insert"   ON matchmaking_queue;
+DROP POLICY IF EXISTS "mq_own_update"   ON matchmaking_queue;
+DROP POLICY IF EXISTS "mq_own_delete"   ON matchmaking_queue;
+CREATE POLICY "mq_public_read"  ON matchmaking_queue FOR SELECT USING (true);
+CREATE POLICY "mq_own_insert"   ON matchmaking_queue FOR INSERT WITH CHECK (
+  username IN (SELECT username FROM players WHERE auth_id = auth.uid()));
+CREATE POLICY "mq_own_update"   ON matchmaking_queue FOR UPDATE
+  USING (username IN (SELECT username FROM players WHERE auth_id = auth.uid()));
+CREATE POLICY "mq_own_delete"   ON matchmaking_queue FOR DELETE
+  USING (username IN (SELECT username FROM players WHERE auth_id = auth.uid()));
+
+-- ─── active_matches ───────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS active_matches (
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  mode          TEXT        NOT NULL,
+  host_username TEXT        NOT NULL,
+  red_team      JSONB       NOT NULL DEFAULT '[]',
+  blue_team     JSONB       NOT NULL DEFAULT '[]',
+  status        TEXT        NOT NULL DEFAULT 'starting',
+  channel_id    TEXT        NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT am_mode_valid   CHECK (mode IN ('1v1','2v2','3v3','4v4','5v5')),
+  CONSTRAINT am_status_valid CHECK (status IN ('waiting','starting','playing','finished'))
+);
+
+ALTER TABLE active_matches ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "am_public_read"  ON active_matches;
+DROP POLICY IF EXISTS "am_own_insert"   ON active_matches;
+DROP POLICY IF EXISTS "am_own_update"   ON active_matches;
+CREATE POLICY "am_public_read" ON active_matches FOR SELECT USING (true);
+CREATE POLICY "am_own_insert"  ON active_matches FOR INSERT WITH CHECK (
+  host_username IN (SELECT username FROM players WHERE auth_id = auth.uid()));
+CREATE POLICY "am_own_update"  ON active_matches FOR UPDATE
+  USING (host_username IN (SELECT username FROM players WHERE auth_id = auth.uid()));
+
+-- ─── custom_rooms ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS custom_rooms (
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  name          TEXT        NOT NULL,
+  host_username TEXT        NOT NULL,
+  max_players   INTEGER     NOT NULL DEFAULT 10,
+  red_team      JSONB       NOT NULL DEFAULT '[]',
+  blue_team     JSONB       NOT NULL DEFAULT '[]',
+  status        TEXT        NOT NULL DEFAULT 'waiting',
+  channel_id    TEXT        NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT cr_max_players_range CHECK (max_players BETWEEN 2 AND 10),
+  CONSTRAINT cr_status_valid      CHECK (status IN ('waiting','starting','playing','finished'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_cr_status ON custom_rooms (status, created_at DESC);
+
+ALTER TABLE custom_rooms ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "cr_public_read"  ON custom_rooms;
+DROP POLICY IF EXISTS "cr_own_insert"   ON custom_rooms;
+DROP POLICY IF EXISTS "cr_own_update"   ON custom_rooms;
+DROP POLICY IF EXISTS "cr_own_delete"   ON custom_rooms;
+CREATE POLICY "cr_public_read" ON custom_rooms FOR SELECT USING (true);
+CREATE POLICY "cr_own_insert"  ON custom_rooms FOR INSERT WITH CHECK (
+  host_username IN (SELECT username FROM players WHERE auth_id = auth.uid()));
+CREATE POLICY "cr_own_update"  ON custom_rooms FOR UPDATE  USING (true);
+CREATE POLICY "cr_own_delete"  ON custom_rooms FOR DELETE
+  USING (host_username IN (SELECT username FROM players WHERE auth_id = auth.uid()));
+
 -- ─── Gerçek Zamanlı ───────────────────────────────────────────────────────────
 --  Lider tablosu ve maç geçmişi anlık güncelleme için.
 ALTER PUBLICATION supabase_realtime ADD TABLE players;
 ALTER PUBLICATION supabase_realtime ADD TABLE match_history;
+ALTER PUBLICATION supabase_realtime ADD TABLE matchmaking_queue;
+ALTER PUBLICATION supabase_realtime ADD TABLE custom_rooms;
 
 
 -- ─── Doğrulama Sorguları ──────────────────────────────────────────────────────

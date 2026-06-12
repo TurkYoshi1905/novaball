@@ -98,17 +98,13 @@ export interface MatchResultData {
 }
 
 export type AppScreen =
-  | "login"
-  | "register"
-  | "email-verify"
-  | "menu"
-  | "rankpage"
-  | "changelog"
-  | "playing"
-  | "ranked"
-  | "result"
-  | "leaderboard"
-  | "profile";
+  | "login" | "register" | "email-verify"
+  | "menu" | "rankpage" | "changelog"
+  | "playing" | "ranked" | "result"
+  | "leaderboard" | "profile"
+  | "mod-select" | "matchmaking"
+  | "custom-rooms" | "create-room" | "room-lobby"
+  | "match-intro" | "multiplayer" | "mp-result";
 
 export type BallOwner = "player" | "ai" | null;
 
@@ -121,4 +117,93 @@ export interface MobileInput {
 
 export function createMobileInput(): MobileInput {
   return { dx: 0, dy: 0, shoot: false, sprint: false };
+}
+
+// ─── Multiplayer Types ────────────────────────────────────────────────────────
+
+export type GameMode = "1v1" | "2v2" | "3v3" | "4v4" | "5v5";
+
+export const MODE_TEAM_SIZE: Record<GameMode, number> = {
+  "1v1": 1, "2v2": 2, "3v3": 3, "4v4": 4, "5v5": 5,
+};
+export const MODE_TOTAL = (m: GameMode) => MODE_TEAM_SIZE[m] * 2;
+
+export type RoomStatus  = "waiting" | "starting" | "playing" | "finished";
+export type QueueStatus = "searching" | "matched" | "cancelled";
+
+export interface MPPlayer {
+  username:    string;
+  displayName: string;
+  team:        Team;
+  teamIndex:   number;   // 1‑based jersey number within team
+  x: number; y: number;
+  vx: number; vy: number;
+  stamina:    number;
+  kickCharge: number;
+}
+
+export interface MPGameState {
+  players:    MPPlayer[];
+  ball:       { x: number; y: number; vx: number; vy: number };
+  score:      Score;
+  gameTimeMs: number;
+  phase:      "countdown" | "playing" | "goal_pause" | "finished";
+  lastGoalTeam?: Team;
+}
+
+export interface PlayerInput {
+  username: string;
+  dx: number; dy: number;
+  shoot: boolean; sprint: boolean;
+  ts: number;
+}
+
+export interface ChatMessage {
+  id:          string;
+  username:    string;
+  displayName: string;
+  text:        string;
+  type:        "user" | "system";
+  ts:          number;
+}
+
+export interface TeamMember { username: string; displayName: string; }
+
+export interface MatchSession {
+  id:           string;
+  mode:         GameMode;
+  channelId:    string;
+  hostUsername: string;
+  redTeam:      TeamMember[];
+  blueTeam:     TeamMember[];
+  status:       RoomStatus;
+  createdAt:    string;
+}
+
+export interface CustomRoom {
+  id:           string;
+  name:         string;
+  hostUsername: string;
+  maxPlayers:   number;
+  redTeam:      TeamMember[];
+  blueTeam:     TeamMember[];
+  status:       RoomStatus;
+  channelId:    string;
+  createdAt:    string;
+}
+
+export interface MPResult {
+  mode:         GameMode;
+  isRanked:     boolean;
+  winnerTeam:   Team | "draw";
+  redGoals:     number;
+  blueGoals:    number;
+  myTeam:       Team;
+  rpGained:     number;
+  prevRP:       number;
+  newRP:        number;
+  rankChanged:  boolean;
+  prevRankName: string;
+  newRankName:  string;
+  playerStats:  Array<{ username: string; displayName: string; goals: number; rpGained: number }>;
 }

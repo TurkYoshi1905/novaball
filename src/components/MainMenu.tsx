@@ -9,6 +9,8 @@ interface Props {
   displayName: string;
   onPlay: () => void;
   onPlayRanked: () => void;
+  onMatchmaking: () => void;
+  onCustomRooms: () => void;
   onShowRanks: () => void;
   onShowChangelog: () => void;
   onLogout: () => void;
@@ -17,8 +19,8 @@ interface Props {
 }
 
 export default function MainMenu({
-  username, displayName, onPlay, onPlayRanked, onShowRanks,
-  onShowChangelog, onLogout, onShowLeaderboard, onShowProfile,
+  username, displayName, onPlay, onPlayRanked, onMatchmaking, onCustomRooms,
+  onShowRanks, onShowChangelog, onLogout, onShowLeaderboard, onShowProfile,
 }: Props) {
   const [showHow,    setShowHow]    = useState(false);
   const [showLogout, setShowLogout] = useState(false);
@@ -110,19 +112,34 @@ export default function MainMenu({
         {/* Butonlar */}
         <div className="flex flex-col gap-2.5 w-full">
           <button
-            onClick={onPlayRanked}
+            onClick={onMatchmaking}
             className="novaball-btn-ranked w-full py-[18px] sm:py-5 rounded-2xl text-white font-black text-lg sm:text-xl tracking-wide transition-all active:scale-[0.97] flex items-center justify-center gap-3"
           >
-            <span>🏅</span><span>Rekabet Modu</span>
-            <span className="text-sm font-bold opacity-70 ml-1">90s</span>
+            <span>🎮</span><span>Maça Gir</span>
+            <span className="text-sm font-bold opacity-70 ml-1">1v1–5v5</span>
           </button>
 
           <button
-            onClick={onPlay}
-            className="novaball-btn-primary w-full py-4 rounded-2xl text-white font-bold text-base tracking-wide transition-all active:scale-[0.97]"
+            onClick={onCustomRooms}
+            className="w-full py-4 rounded-2xl font-bold text-base tracking-wide transition-all active:scale-[0.97] text-white flex items-center justify-center gap-2.5 border border-[#a78bfa]/30 bg-[#a78bfa]/8 hover:bg-[#a78bfa]/16"
           >
-            ⚽ Serbest Oyun
+            <span>🏟️</span><span className="text-[#a78bfa]">Özel Odalar</span>
           </button>
+
+          <div className="flex gap-2.5">
+            <button
+              onClick={onPlayRanked}
+              className="flex-1 py-3.5 rounded-2xl text-white font-bold text-sm tracking-wide transition-all active:scale-[0.97] border border-[#facc15]/20 bg-[#facc15]/6 hover:bg-[#facc15]/12 flex items-center justify-center gap-2"
+            >
+              <span>🏅</span><span className="text-[#facc15]">Rekabet (AI)</span>
+            </button>
+            <button
+              onClick={onPlay}
+              className="flex-1 py-3.5 rounded-2xl text-white font-bold text-sm tracking-wide transition-all active:scale-[0.97] novaball-btn-secondary"
+            >
+              ⚽ Serbest
+            </button>
+          </div>
 
           <button
             onClick={onShowLeaderboard}
