@@ -76,9 +76,10 @@ if [ "$MODE" = "push" ]; then
   SRC_COUNT=$(find "$DEPLOY_TMP/src" -name "*.ts" -o -name "*.tsx" | wc -l | tr -d ' ')
   echo "  ✓ src/ kopyalandı ($SRC_COUNT TypeScript/TSX dosyası)."
 
-  # public/ — favicon, robots.txt, og image
+  # public/ — favicon.png, icon-192.png, favicon.svg, opengraph.jpg, robots.txt
   cp -r "$NOVABALL_SRC/public" "$DEPLOY_TMP/public"
-  echo "  ✓ public/ kopyalandı."
+  PUB_COUNT=$(ls "$NOVABALL_SRC/public/" | wc -l | tr -d ' ')
+  echo "  ✓ public/ kopyalandı ($PUB_COUNT dosya: favicon.png, icon-192.png dahil)."
 
   # index.html
   cp "$NOVABALL_SRC/index.html" "$DEPLOY_TMP/index.html"
