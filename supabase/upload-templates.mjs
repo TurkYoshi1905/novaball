@@ -57,6 +57,49 @@ const payload = {
 
   mailer_subjects_reauthentication: "⚽ NovaBall — Kimliğini doğrula",
   mailer_templates_reauthentication_content: read("reauthentication.html"),
+
+  // Güvenlik bildirimleri
+  mailer_subjects_password_change:
+    "⚽ NovaBall — Şifren değiştirildi",
+  mailer_templates_password_change_content: read(
+    "security-password-changed.html"
+  ),
+
+  mailer_subjects_email_address_change:
+    "⚽ NovaBall — E-posta adresin değiştirildi",
+  mailer_templates_email_address_change_content: read(
+    "security-email-changed.html"
+  ),
+
+  mailer_subjects_phone_change:
+    "⚽ NovaBall — Telefon numaran değiştirildi",
+  mailer_templates_phone_change_content: read(
+    "security-phone-changed.html"
+  ),
+
+  mailer_subjects_signup_method_linked:
+    "⚽ NovaBall — Yeni giriş yöntemi eklendi",
+  mailer_templates_signup_method_linked_content: read(
+    "security-signin-linked.html"
+  ),
+
+  mailer_subjects_signup_method_removed:
+    "⚽ NovaBall — Giriş yöntemi kaldırıldı",
+  mailer_templates_signup_method_removed_content: read(
+    "security-signin-removed.html"
+  ),
+
+  mailer_subjects_mfa_factor_linked:
+    "⚽ NovaBall — İki faktörlü doğrulama eklendi",
+  mailer_templates_mfa_factor_linked_content: read(
+    "security-mfa-added.html"
+  ),
+
+  mailer_subjects_mfa_factor_removed:
+    "⚽ NovaBall — İki faktörlü doğrulama kaldırıldı",
+  mailer_templates_mfa_factor_removed_content: read(
+    "security-mfa-removed.html"
+  ),
 };
 
 // ── API isteği ──────────────────────────────────────────────────────────────
@@ -73,6 +116,13 @@ const templateNames = [
   "change-email",
   "reset-password",
   "reauthentication",
+  "security-password-changed",
+  "security-email-changed",
+  "security-phone-changed",
+  "security-signin-linked",
+  "security-signin-removed",
+  "security-mfa-added",
+  "security-mfa-removed",
 ];
 
 console.log("▶ [1/2] Yükleniyor...");
@@ -94,20 +144,9 @@ if (!res.ok) {
   process.exit(1);
 }
 
-console.log("\n▶ [2/2] Güvenlik bildirimleri...");
-console.log(
-  "  ℹ️  Güvenlik bildirimleri (şifre değişti, MFA vb.) yalnızca"
-);
-console.log(
-  "     Supabase Dashboard üzerinden yapıştırılabilir."
-);
-console.log(
-  "     → Authentication → Emails → Templates sekmesi"
-);
-
 console.log(`
 ══════════════════════════════════════════════════
-  ✅  6 Authentication şablonu başarıyla yüklendi!
+  ✅  13 şablon başarıyla yüklendi!
   🔗  https://supabase.com/dashboard/project/${PROJECT_REF}/auth/email-templates
 ══════════════════════════════════════════════════
 `);
