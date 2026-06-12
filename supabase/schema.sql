@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 --  NovaBall — Supabase Veritabanı Şeması
---  Versiyon : 3.2.0  (uygulama v0.0.2)
+--  Versiyon : 3.3.0  (uygulama v0.0.2)
 --  Tarih    : 2026-06-12
 --
 --  Kullanım:
@@ -49,6 +49,9 @@ CREATE TABLE IF NOT EXISTS players (
   total_draws           INTEGER     NOT NULL DEFAULT 0,
   total_goals_scored    INTEGER     NOT NULL DEFAULT 0,
   total_goals_conceded  INTEGER     NOT NULL DEFAULT 0,
+
+  -- Rank (otomatik hesaplanır — rp değiştiğinde trigger günceller)
+  current_rank          TEXT        NOT NULL DEFAULT 'Demir 1',
 
   -- Aktif Oyuncu Takibi
   last_seen             TIMESTAMPTZ,
@@ -132,6 +135,62 @@ DROP TRIGGER IF EXISTS players_updated_at ON players;
 CREATE TRIGGER players_updated_at
   BEFORE UPDATE ON players
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+
+-- ─── Rank Hesaplama Fonksiyonu ───────────────────────────────────────────────
+--  TypeScript rankSystem.ts ile birebir eşleşir.
+--  rp aralıkları: Demir 0/100/200 · Bronz 300/450/600 · Gümüş 750/1000/1250
+--                 Altın 1500/1800/2100 · Platin 2400/2800/3200
+--                 Elmas 3600/4100/4600 · Usta 5200+
+-- ──────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION calculate_rank_from_rp(p_rp INTEGER)
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE
+SET search_path = public
+AS $$
+BEGIN
+  IF    p_rp >= 5200 THEN RETURN 'Usta';
+  ELSIF p_rp >= 4600 THEN RETURN 'Elmas 3';
+  ELSIF p_rp >= 4100 THEN RETURN 'Elmas 2';
+  ELSIF p_rp >= 3600 THEN RETURN 'Elmas 1';
+  ELSIF p_rp >= 3200 THEN RETURN 'Platin 3';
+  ELSIF p_rp >= 2800 THEN RETURN 'Platin 2';
+  ELSIF p_rp >= 2400 THEN RETURN 'Platin 1';
+  ELSIF p_rp >= 2100 THEN RETURN 'Altın 3';
+  ELSIF p_rp >= 1800 THEN RETURN 'Altın 2';
+  ELSIF p_rp >= 1500 THEN RETURN 'Altın 1';
+  ELSIF p_rp >= 1250 THEN RETURN 'Gümüş 3';
+  ELSIF p_rp >= 1000 THEN RETURN 'Gümüş 2';
+  ELSIF p_rp >= 750  THEN RETURN 'Gümüş 1';
+  ELSIF p_rp >= 600  THEN RETURN 'Bronz 3';
+  ELSIF p_rp >= 450  THEN RETURN 'Bronz 2';
+  ELSIF p_rp >= 300  THEN RETURN 'Bronz 1';
+  ELSIF p_rp >= 200  THEN RETURN 'Demir 3';
+  ELSIF p_rp >= 100  THEN RETURN 'Demir 2';
+  ELSE                    RETURN 'Demir 1';
+  END IF;
+END;
+$$;
+
+COMMENT ON FUNCTION calculate_rank_from_rp IS 'RP değerinden rank adı döner — TypeScript rankSystem.ts ile eşleşir';
+
+
+-- ─── Rank Otomatik Güncelleme Trigger'ı ──────────────────────────────────────
+--  rp değiştiğinde current_rank otomatik hesaplanır.
+-- ──────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION sync_current_rank()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.current_rank = calculate_rank_from_rp(NEW.rp);
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS players_sync_rank ON players;
+CREATE TRIGGER players_sync_rank
+  BEFORE INSERT OR UPDATE OF rp ON players
+  FOR EACH ROW EXECUTE FUNCTION sync_current_rank();
 
 
 -- ─── RPC: Oyuncu Oluştur (RLS bypass) ───────────────────────────────────────
@@ -227,6 +286,7 @@ RETURNS TABLE (
   username              TEXT,
   display_name          TEXT,
   rp                    INTEGER,
+  current_rank          TEXT,
   total_matches         INTEGER,
   total_wins            INTEGER,
   total_losses          INTEGER,
@@ -248,6 +308,7 @@ BEGIN
     p.username,
     p.display_name,
     p.rp,
+    p.current_rank,
     p.total_matches,
     p.total_wins,
     p.total_losses,

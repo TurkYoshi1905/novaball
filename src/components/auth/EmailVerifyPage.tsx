@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Mail, RefreshCw, CheckCircle, LogIn } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Mail, RefreshCw, CheckCircle, LogIn, ShieldCheck } from "lucide-react";
 import { resendVerification, signOut } from "../../lib/auth";
 
 interface Props {
@@ -7,19 +7,44 @@ interface Props {
   onGoLogin: () => void;
 }
 
+const COOLDOWN_SECS = 60;
+
 export default function EmailVerifyPage({ email, onGoLogin }: Props) {
-  const [resending, setResending] = useState(false);
-  const [resent,    setResent]    = useState(false);
-  const [error,     setError]     = useState("");
+  const [resending, setResending]   = useState(false);
+  const [resent,    setResent]      = useState(false);
+  const [error,     setError]       = useState("");
+  const [cooldown,  setCooldown]    = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function startCooldown() {
+    setCooldown(COOLDOWN_SECS);
+    timerRef.current = setInterval(() => {
+      setCooldown(prev => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          timerRef.current = null;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
+
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
   async function handleResend() {
+    if (cooldown > 0 || resending) return;
     setResending(true);
     setError("");
     setResent(false);
     try {
       const { error: e } = await resendVerification(email);
-      if (e) setError(e.message);
-      else setResent(true);
+      if (e) {
+        setError(e.message);
+      } else {
+        setResent(true);
+        startCooldown();
+      }
     } finally {
       setResending(false);
     }
@@ -29,6 +54,8 @@ export default function EmailVerifyPage({ email, onGoLogin }: Props) {
     await signOut();
     onGoLogin();
   }
+
+  const btnDisabled = resending || cooldown > 0;
 
   return (
     <div className="novaball-screen flex flex-col items-center justify-center min-h-[100dvh] bg-[#070d16] relative overflow-hidden px-5">
@@ -47,15 +74,23 @@ export default function EmailVerifyPage({ email, onGoLogin }: Props) {
         <div className="flex flex-col gap-2">
           <h2 className="text-white font-black text-3xl">E-postanı Doğrula</h2>
           <p className="text-white/40 text-sm leading-relaxed">
-            Doğrulama bağlantısı gönderildi:
+            Hesabına erişmek için önce e-postanı doğrulamalısın.
           </p>
           <div className="px-4 py-2.5 rounded-xl border border-white/10 bg-white/5">
             <span className="text-white font-semibold text-sm break-all">{email}</span>
           </div>
         </div>
 
+        {/* Zorunluluk uyarısı */}
+        <div className="w-full flex items-start gap-2.5 rounded-xl border border-[#4af]/20 bg-[#4af]/6 px-4 py-3 text-left">
+          <ShieldCheck size={16} className="text-[#4af] flex-shrink-0 mt-0.5" />
+          <p className="text-[#4af]/80 text-xs leading-relaxed">
+            E-posta doğrulaması zorunludur. Doğrulamadan oyuna giriş yapamazsın.
+          </p>
+        </div>
+
         {/* Adımlar */}
-        <div className="w-full flex flex-col gap-3 text-left">
+        <div className="w-full flex flex-col gap-2.5 text-left">
           {[
             { num: "1", text: "Gelen kutunu aç (spam klasörüne de bak)" },
             { num: "2", text: "\"NovaBall — E-posta Doğrulama\" konulu e-postayı bul" },
@@ -87,11 +122,16 @@ export default function EmailVerifyPage({ email, onGoLogin }: Props) {
         <div className="flex flex-col gap-2.5 w-full">
           <button
             onClick={handleResend}
-            disabled={resending}
-            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-white/12 bg-white/5 text-white/70 font-semibold text-sm hover:bg-white/8 hover:text-white transition-all active:scale-[0.98] disabled:opacity-40"
+            disabled={btnDisabled}
+            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-white/12 bg-white/5 text-white/70 font-semibold text-sm hover:bg-white/8 hover:text-white transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <RefreshCw size={15} className={resending ? "animate-spin" : ""} />
-            {resending ? "Gönderiliyor…" : "Tekrar Gönder"}
+            {resending
+              ? "Gönderiliyor…"
+              : cooldown > 0
+                ? `Tekrar Gönder (${cooldown}s)`
+                : "Tekrar Gönder"
+            }
           </button>
 
           <button

@@ -5,6 +5,7 @@ export interface PlayerRow {
   display_name: string;
   email?: string;
   rp: number;
+  current_rank: string;
   total_matches: number;
   total_wins: number;
   total_losses: number;
@@ -31,7 +32,7 @@ export interface MatchRow {
 }
 
 const PUBLIC_COLS =
-  "username,display_name,rp,total_matches,total_wins,total_losses,total_draws,total_goals_scored,total_goals_conceded,last_seen,created_at,updated_at";
+  "username,display_name,rp,current_rank,total_matches,total_wins,total_losses,total_draws,total_goals_scored,total_goals_conceded,last_seen,created_at,updated_at";
 
 // ─── Auth helpers ──────────────────────────────────────────────────────────────
 

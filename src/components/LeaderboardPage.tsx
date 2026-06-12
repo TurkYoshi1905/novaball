@@ -166,11 +166,22 @@ export default function LeaderboardPage({ currentUsername, onBack, onViewProfile
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#4ade80]/12 text-[#4ade80] flex-shrink-0">Aktif</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-sm">{rank.tier.icon}</span>
-                      <span className="text-xs" style={{ color: rank.tier.color }}>{rank.fullName}</span>
+                    {/* Rank rozeti */}
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <div
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                        style={{
+                          background: `${rank.tier.color}15`,
+                          border: `1px solid ${rank.tier.color}35`,
+                        }}
+                      >
+                        <span className="text-xs leading-none">{rank.tier.icon}</span>
+                        <span className="text-[11px] font-bold" style={{ color: rank.tier.color }}>
+                          {p.current_rank ?? rank.fullName}
+                        </span>
+                      </div>
                       {p.total_matches > 0 && (
-                        <span className="text-white/25 text-xs ml-1">{winRate}% G.O.</span>
+                        <span className="text-white/25 text-[11px]">{winRate}% G.O.</span>
                       )}
                     </div>
                   </div>
