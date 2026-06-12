@@ -21,7 +21,7 @@
 set -e
 
 MODE="${1:-push}"
-COMMIT_MSG="${2:-NovaBall: güncel kaynak kodu - güç barı, 60fps kilit, mobil joystick}"
+COMMIT_MSG="${2:-NovaBall: Profil + Lider Tablosu + Supabase entegrasyonu}"
 BRANCH="main"
 WORKSPACE="/home/runner/workspace"
 NOVABALL_SRC="$WORKSPACE/artifacts/novaball"
@@ -100,6 +100,9 @@ if [ "$MODE" = "push" ]; then
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.14",

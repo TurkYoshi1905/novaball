@@ -97,7 +97,16 @@ export interface MatchResultData {
   newRankName: string;
 }
 
-export type AppScreen = "username" | "menu" | "rankpage" | "changelog" | "playing" | "ranked" | "result";
+export type AppScreen =
+  | "username"
+  | "menu"
+  | "rankpage"
+  | "changelog"
+  | "playing"
+  | "ranked"
+  | "result"
+  | "leaderboard"
+  | "profile";
 
 export type BallOwner = "player" | "ai" | null;
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Trophy, User } from "lucide-react";
 import { FOUNDING_DATE } from "../types/game";
 import { loadRP, getRankForRP, getRPProgressInRank, ALL_RANKS } from "../utils/rankSystem";
 import CHANGELOG from "../utils/changelogData";
@@ -10,9 +11,14 @@ interface Props {
   onShowRanks: () => void;
   onShowChangelog: () => void;
   onChangeUsername: () => void;
+  onShowLeaderboard: () => void;
+  onShowProfile: () => void;
 }
 
-export default function MainMenu({ username, onPlay, onPlayRanked, onShowRanks, onShowChangelog, onChangeUsername }: Props) {
+export default function MainMenu({
+  username, onPlay, onPlayRanked, onShowRanks,
+  onShowChangelog, onChangeUsername, onShowLeaderboard, onShowProfile,
+}: Props) {
   const [showHow, setShowHow] = useState(false);
   const initial = username.charAt(0).toUpperCase();
 
@@ -44,9 +50,12 @@ export default function MainMenu({ username, onPlay, onPlayRanked, onShowRanks, 
           </div>
         </div>
 
-        {/* Oyuncu kartı */}
+        {/* Oyuncu kartı — tıklanınca profil açılır */}
         <div className="flex flex-col gap-2 w-full">
-          <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 w-full">
+          <button
+            onClick={onShowProfile}
+            className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 w-full hover:bg-white/8 hover:border-white/18 transition-all active:scale-[0.99] group text-left"
+          >
             <div className="flex-shrink-0">
               <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#e63535] to-[#c02020] flex items-center justify-center shadow-[0_0_16px_rgba(230,53,53,.35)]">
                 <span className="text-white font-black text-lg">{initial}</span>
@@ -56,15 +65,19 @@ export default function MainMenu({ username, onPlay, onPlayRanked, onShowRanks, 
               <span className="text-white/40 text-[10px] uppercase tracking-widest">Oyuncu</span>
               <span className="text-white font-bold text-lg truncate">{username}</span>
             </div>
+            <div className="flex items-center gap-1 text-white/25 group-hover:text-white/55 transition-colors flex-shrink-0">
+              <User size={14} />
+              <span className="text-xs">Profil</span>
+            </div>
             <button
-              onClick={onChangeUsername}
-              className="ml-auto text-white/25 hover:text-white/60 transition-colors text-xs uppercase tracking-wider flex-shrink-0 py-1 px-2"
+              onClick={(e) => { e.stopPropagation(); onChangeUsername(); }}
+              className="ml-1 text-white/25 hover:text-white/60 transition-colors text-xs uppercase tracking-wider flex-shrink-0 py-1 px-2 rounded hover:bg-white/8"
             >
               Değiştir
             </button>
-          </div>
+          </button>
 
-          {/* Rank rozeti — tıklanabilir */}
+          {/* Rank rozeti */}
           <button
             onClick={onShowRanks}
             className="flex items-center gap-3 bg-white/3 border rounded-xl px-4 py-3 w-full hover:bg-white/6 transition-all active:scale-[0.99] group text-left"
@@ -113,6 +126,20 @@ export default function MainMenu({ username, onPlay, onPlayRanked, onShowRanks, 
             className="novaball-btn-primary w-full py-4 rounded-2xl text-white font-bold text-base tracking-wide transition-all active:scale-[0.97]"
           >
             ⚽ Serbest Oyun
+          </button>
+
+          {/* Lider Tablosu */}
+          <button
+            onClick={onShowLeaderboard}
+            className="flex items-center justify-between w-full px-4 py-3.5 rounded-2xl border border-[#facc15]/20 bg-[#facc15]/5 hover:bg-[#facc15]/10 hover:border-[#facc15]/35 transition-all active:scale-[0.98] group"
+          >
+            <div className="flex items-center gap-2.5">
+              <Trophy size={18} className="text-[#facc15]" />
+              <span className="text-white/70 font-bold text-base group-hover:text-white/90 transition-colors">
+                Lider Tablosu
+              </span>
+            </div>
+            <span className="text-white/25 text-xs group-hover:text-white/50 transition-colors">Top 100 →</span>
           </button>
 
           <button

@@ -5,8 +5,11 @@ import GameBoard from "./components/GameBoard";
 import RankPage from "./components/RankPage";
 import ChangelogPage from "./components/ChangelogPage";
 import MatchResult from "./components/MatchResult";
+import ProfilePage from "./components/ProfilePage";
+import LeaderboardPage from "./components/LeaderboardPage";
 import type { AppScreen, MatchResultData } from "./types/game";
 import { loadRP, saveRP, getRankForRP, calcRPForWin } from "./utils/rankSystem";
+import { initPlayer, saveMatch } from "./lib/db";
 
 export default function App() {
   const [screen, setScreen] = useState<AppScreen>(() =>
@@ -16,16 +19,28 @@ export default function App() {
     () => localStorage.getItem("novaball_username") ?? ""
   );
   const [matchResult, setMatchResult] = useState<MatchResultData | null>(null);
+  const [viewingUsername, setViewingUsername] = useState<string>("");
+  const [prevScreen, setPrevScreen] = useState<AppScreen>("menu");
 
-  const handleUsername = (name: string) => {
+  const handleUsername = useCallback(async (name: string) => {
     setUsername(name);
     setScreen("menu");
-  };
+    const localRP = loadRP();
+    try {
+      const serverRP = await initPlayer(name, localRP);
+      if (serverRP > localRP) {
+        saveRP(serverRP);
+      }
+    } catch (e) {
+      console.warn("Supabase init failed, using local RP", e);
+    }
+  }, []);
 
-  const handleMatchEnd = useCallback((playerGoals: number, aiGoals: number) => {
-    const won   = playerGoals > aiGoals;
-    const drew  = playerGoals === aiGoals;
-    const prevRP = loadRP();
+  const handleMatchEnd = useCallback(async (playerGoals: number, aiGoals: number) => {
+    const won      = playerGoals > aiGoals;
+    const drew     = playerGoals === aiGoals;
+    const lost     = aiGoals > playerGoals;
+    const prevRP   = loadRP();
     const rpGained = won ? calcRPForWin(playerGoals) : 0;
     const newRP    = prevRP + rpGained;
 
@@ -41,7 +56,31 @@ export default function App() {
       prevRankName, newRankName,
     });
     setScreen("result");
-  }, []);
+
+    // Persist to Supabase in background
+    try {
+      const result: "win" | "loss" | "draw" = won ? "win" : drew ? "draw" : "loss";
+      await saveMatch({
+        username,
+        opponentName: "AI",
+        playerGoals,
+        opponentGoals: aiGoals,
+        result,
+        rpGained,
+        rpBefore: prevRP,
+        rpAfter: newRP,
+        ranked: true,
+      });
+    } catch (e) {
+      console.warn("Supabase saveMatch failed", e);
+    }
+  }, [username]);
+
+  const handleViewProfile = useCallback((uname: string) => {
+    setViewingUsername(uname);
+    setPrevScreen(screen);
+    setScreen("profile");
+  }, [screen]);
 
   if (screen === "username") {
     return <UsernameScreen onContinue={handleUsername} />;
@@ -56,6 +95,12 @@ export default function App() {
         onShowRanks={() => setScreen("rankpage")}
         onShowChangelog={() => setScreen("changelog")}
         onChangeUsername={() => setScreen("username")}
+        onShowLeaderboard={() => setScreen("leaderboard")}
+        onShowProfile={() => {
+          setViewingUsername(username);
+          setPrevScreen("menu");
+          setScreen("profile");
+        }}
       />
     );
   }
@@ -94,6 +139,26 @@ export default function App() {
         result={matchResult}
         onPlayAgain={() => setScreen("ranked")}
         onMenu={() => setScreen("menu")}
+      />
+    );
+  }
+
+  if (screen === "leaderboard") {
+    return (
+      <LeaderboardPage
+        currentUsername={username}
+        onBack={() => setScreen("menu")}
+        onViewProfile={handleViewProfile}
+      />
+    );
+  }
+
+  if (screen === "profile") {
+    return (
+      <ProfilePage
+        username={viewingUsername || username}
+        isOwnProfile={(viewingUsername || username) === username}
+        onBack={() => setScreen(prevScreen)}
       />
     );
   }
