@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   ChevronLeft, Trophy, Swords, Target, ShieldOff,
-  TrendingUp, Calendar, Zap, Award,
+  TrendingUp, Calendar, Zap, Award, Radio,
 } from "lucide-react";
-import { getPlayer, getMatchHistory, type PlayerRow, type MatchRow } from "../lib/db";
+import { getPlayer, getMatchHistory, subscribeMatchHistory, type PlayerRow, type MatchRow } from "../lib/db";
 import { getRankForRP, getRPProgressInRank, ALL_RANKS } from "../utils/rankSystem";
 
 interface Props {
@@ -36,18 +36,28 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
 }
 
 export default function ProfilePage({ username, isOwnProfile, onBack }: Props) {
-  const [player, setPlayer] = useState<PlayerRow | null>(null);
+  const [player,  setPlayer]  = useState<PlayerRow | null>(null);
   const [matches, setMatches] = useState<MatchRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [live,    setLive]    = useState(false);
 
-  useEffect(() => {
-    setLoading(true);
+  const fetchData = useCallback(() => {
     Promise.all([getPlayer(username), getMatchHistory(username, 30)]).then(([p, m]) => {
       setPlayer(p);
       setMatches(m);
       setLoading(false);
     });
   }, [username]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchData();
+    const unsub = subscribeMatchHistory(username, () => {
+      setLive(true);
+      fetchData();
+    });
+    return unsub;
+  }, [username, fetchData]);
 
   const initial = username.charAt(0).toUpperCase();
   const rp = player?.rp ?? 0;
@@ -73,7 +83,15 @@ export default function ProfilePage({ username, isOwnProfile, onBack }: Props) {
             <ChevronLeft size={20} />
             <span className="text-sm">Geri</span>
           </button>
-          <span className="text-white/20 text-sm">{isOwnProfile ? "Profilim" : "Oyuncu Profili"}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-white/20 text-sm">{isOwnProfile ? "Profilim" : "Oyuncu Profili"}</span>
+            {live && (
+              <div className="flex items-center gap-1 text-[#4ade80] text-[10px] font-bold uppercase tracking-wider">
+                <Radio size={10} className="animate-pulse" />
+                <span>Canlı</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {loading ? (

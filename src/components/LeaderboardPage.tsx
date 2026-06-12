@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { ChevronLeft, RefreshCw, Medal } from "lucide-react";
-import { getLeaderboard, type PlayerRow } from "../lib/db";
+import { useEffect, useState, useCallback } from "react";
+import { ChevronLeft, RefreshCw, Medal, Radio } from "lucide-react";
+import { getLeaderboard, subscribeLeaderboard, type PlayerRow } from "../lib/db";
 import { getRankForRP } from "../utils/rankSystem";
 
 interface Props {
@@ -21,18 +21,26 @@ function PositionBadge({ pos }: { pos: number }) {
 }
 
 export default function LeaderboardPage({ currentUsername, onBack, onViewProfile }: Props) {
-  const [players, setPlayers] = useState<PlayerRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [players, setPlayers]   = useState<PlayerRow[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [live, setLive]         = useState(false);
 
-  const fetchData = () => {
+  const fetchData = useCallback(() => {
     setLoading(true);
     getLeaderboard().then(data => {
       setPlayers(data);
       setLoading(false);
     });
-  };
+  }, []);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+    const unsub = subscribeLeaderboard(() => {
+      setLive(true);
+      fetchData();
+    });
+    return unsub;
+  }, [fetchData]);
 
   const myRank = players.findIndex(p => p.username === currentUsername) + 1;
 
@@ -58,13 +66,21 @@ export default function LeaderboardPage({ currentUsername, onBack, onViewProfile
             </h1>
             <p className="text-white/30 text-xs uppercase tracking-widest mt-0.5">En İyi Oyuncular</p>
           </div>
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="p-2 rounded-lg border border-white/10 bg-white/5 text-white/40 hover:text-white/70 hover:bg-white/10 transition-all"
-          >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-          </button>
+          <div className="flex items-center gap-2">
+            {live && (
+              <div className="flex items-center gap-1 text-[#4ade80] text-[10px] font-bold uppercase tracking-wider">
+                <Radio size={11} className="animate-pulse" />
+                <span>Canlı</span>
+              </div>
+            )}
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="p-2 rounded-lg border border-white/10 bg-white/5 text-white/40 hover:text-white/70 hover:bg-white/10 transition-all"
+            >
+              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            </button>
+          </div>
         </div>
 
         {/* My rank highlight */}
