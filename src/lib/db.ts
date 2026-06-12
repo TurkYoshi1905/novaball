@@ -81,19 +81,14 @@ export async function createPlayer(
   email: string,
   authId: string,
 ): Promise<void> {
-  await supabase.from("players").insert({
-    username,
-    display_name: displayName,
-    email,
-    auth_id: authId,
-    rp: 0,
-    total_matches: 0,
-    total_wins: 0,
-    total_losses: 0,
-    total_draws: 0,
-    total_goals_scored: 0,
-    total_goals_conceded: 0,
+  // SECURITY DEFINER RPC kullanılır — session olmadan (e-posta doğrulama öncesi) da çalışır
+  const { error } = await supabase.rpc("create_player", {
+    p_username:     username,
+    p_display_name: displayName,
+    p_email:        email,
+    p_auth_id:      authId,
   });
+  if (error) throw error;
 }
 
 /** Legacy: anonymous login migration. Creates player if missing. */

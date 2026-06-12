@@ -21,7 +21,7 @@ import MultiplayerBoard from "./components/MultiplayerBoard";
 import MultiplayerResult from "./components/MultiplayerResult";
 import type { AppScreen, MatchResultData, GameMode, MatchSession, CustomRoom, MPResult } from "./types/game";
 import { loadRP, saveRP, getRankForRP, calcRPForWin } from "./utils/rankSystem";
-import { getPlayerByAuthId, updateLastSeen, saveMatch } from "./lib/db";
+import { getPlayerByAuthId, createPlayer, updateLastSeen, saveMatch } from "./lib/db";
 
 export default function App() {
   const [screen,        setScreen]       = useState<AppScreen>("login");
@@ -40,8 +40,25 @@ export default function App() {
 
   // ─── Load player after successful auth ────────────────────────────────────
   const loadPlayer = useCallback(async (authId: string) => {
-    const player = await getPlayerByAuthId(authId);
-    if (!player) return;
+    let player = await getPlayerByAuthId(authId);
+
+    // Kurtarma: kayıt sırasında RLS hatası yaşandıysa player oluşturulmamış olabilir.
+    // E-posta onayından gelen session'da user_metadata içinde username/display_name var.
+    if (!player) {
+      const { data: { session } } = await supabase.auth.getSession();
+      const meta  = session?.user?.user_metadata as Record<string, string> | undefined;
+      const uname = meta?.username;
+      const dname = meta?.display_name || uname;
+      const email = session?.user?.email;
+      if (uname && email) {
+        try {
+          await createPlayer(uname, dname ?? uname, email, authId);
+          player = await getPlayerByAuthId(authId);
+        } catch { /* sessizce geç */ }
+      }
+      if (!player) return;
+    }
+
     const serverRP = player.rp;
     const localRP  = loadRP();
     if (serverRP > localRP) saveRP(serverRP);

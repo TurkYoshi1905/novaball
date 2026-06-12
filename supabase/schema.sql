@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 --  NovaBall — Supabase Veritabanı Şeması
---  Versiyon : 3.1.0  (uygulama v0.0.2)
+--  Versiyon : 3.2.0  (uygulama v0.0.2)
 --  Tarih    : 2026-06-12
 --
 --  Kullanım:
@@ -132,6 +132,40 @@ DROP TRIGGER IF EXISTS players_updated_at ON players;
 CREATE TRIGGER players_updated_at
   BEFORE UPDATE ON players
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+
+-- ─── RPC: Oyuncu Oluştur (RLS bypass) ───────────────────────────────────────
+--  Kayıt sırasında session olmadan çağrılabilir (e-posta doğrulama bekleniyor).
+--  SECURITY DEFINER ile RLS'yi atlar; auth_id varlığını manuel doğrular.
+-- ──────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION create_player(
+  p_username     TEXT,
+  p_display_name TEXT,
+  p_email        TEXT,
+  p_auth_id      UUID
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- auth_id'nin gerçekten auth.users'da var olduğunu doğrula
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = p_auth_id) THEN
+    RAISE EXCEPTION 'Geçersiz auth_id: kullanıcı bulunamadı';
+  END IF;
+
+  -- Zaten varsa sessizce geç (e-posta onayı sonrası tekrar çağrılabilir)
+  INSERT INTO players (username, display_name, email, auth_id)
+  VALUES (p_username, p_display_name, p_email, p_auth_id)
+  ON CONFLICT (username) DO NOTHING;
+END;
+$$;
+
+COMMENT ON FUNCTION create_player IS 'Kayıt sırasında session olmadan player oluşturur (SECURITY DEFINER — RLS bypass)';
+
+GRANT EXECUTE ON FUNCTION create_player TO anon;
+GRANT EXECUTE ON FUNCTION create_player TO authenticated;
 
 
 -- ─── RPC: Kullanıcı Adı → E-Posta ────────────────────────────────────────────
@@ -418,7 +452,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE custom_rooms;
 --     SELECT is_username_available('testuser');
 
 -- ═══════════════════════════════════════════════════════════════════════════
---  Şema v3.1.0 tamamlandı (NovaBall uygulama v0.0.2)
+--  Şema v3.2.0 tamamlandı (NovaBall uygulama v0.0.2)
 --
 --  Supabase Dashboard'da yapılacaklar:
 --  1. Authentication → Providers → Email → Enable + Confirm email: ON
