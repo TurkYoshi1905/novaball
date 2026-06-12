@@ -16,6 +16,48 @@ export interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.0.2",
+    date: "12 Haziran 2026",
+    label: "alpha",
+    title: "Auth Sistemi + Share Card + Aktif Oyuncu Göstergesi",
+    description:
+      "Tam hesap sistemi (kayıt, giriş, e-posta doğrulama), sosyal medya paylaşım kartı ve lider tablosunda aktif oyuncu göstergesi eklendi. Supabase entegrasyonu derinleştirildi, veritabanı şeması v3.1.0'a güncellendi.",
+    changes: [
+      // Auth
+      { type: "feature", text: "Kayıt ekranı: Görünen Ad, Kullanıcı Adı (küçük harf+rakam, maks 15 karakter), E-posta, Şifre + onay alanları" },
+      { type: "feature", text: "Gerçek zamanlı kullanıcı adı müsaitlik kontrolü — 600ms debounce ile Supabase sorgusu, yeşil/kırmızı anlık geri bildirim" },
+      { type: "feature", text: "Şifre güç göstergesi — Zayıf / Orta / Güçlü renk çubuğu (8 karakter, büyük harf, rakam kontrolleri)" },
+      { type: "feature", text: "Giriş ekranı: Kullanıcı Adı + E-posta + Şifre kombinasyonu doğrulaması, 'Hoşgeldin! 👋' başlığı" },
+      { type: "feature", text: "Kullanıcı adı bazlı giriş: get_email_by_username() RPC ile kullanıcı adı → e-posta eşleşmesi sunucu tarafında doğrulanır" },
+      { type: "feature", text: "E-posta doğrulama sayfası: 3 adımlı talimat, tekrar gönderme butonu, spam klasörü hatırlatması" },
+      { type: "feature", text: "E-posta doğrulandıktan sonra Supabase onAuthStateChange ile otomatik ana menüye yönlendirme" },
+      { type: "feature", text: "Görünen Ad ve kullanıcı adı; profil sayfasında, lider tablosunda ve maç sonuç kartında gösteriliyor" },
+      // Share Card
+      { type: "feature", text: "Maç sonucu paylaşım kartı (ShareCard): html-to-image ile 540×540, 2× piksel yoğunluklu PNG üretimi" },
+      { type: "feature", text: "Share Card içeriği: maç skoru, RP kazanımı, rank rozeti, rank ilerleme çubuğu, tarih, NovaBall markası" },
+      { type: "feature", text: "Share Card tasarımı rank rengine göre dinamik — her kademenin neon rengiyle glow + gradient arka plan" },
+      { type: "feature", text: "Web Share API desteği (mobil paylaş butonu), PNG indirme ve panoya kopyalama" },
+      { type: "feature", text: "Maç sonuç ekranında 'Sonuç Kartını Paylaş' butonu — rank rengiyle dinamik renklendirme" },
+      // Leaderboard
+      { type: "feature", text: "Lider tablosunda aktif oyuncu göstergesi: last_seen < 5 dakika → yeşil nokta + 'Aktif' rozeti" },
+      { type: "feature", text: "Supabase Realtime subscription ile lider tablosu anlık güncelleme — 'Canlı' badge göstergesi" },
+      { type: "feature", text: "Lider tablosunda oyuncu sıralamasına tıklayarak profil sayfasına geçiş" },
+      // DB & Backend
+      { type: "feature", text: "is_username_available() RPC fonksiyonu: kayıt sırasında kullanıcı adı müsaitliği sunucu tarafında kontrol edilir" },
+      { type: "feature", text: "get_leaderboard() RPC: is_active alanı sunucu tarafında hesaplanır (last_seen < 5 dakika)" },
+      { type: "improvement", text: "Supabase şeması v3.1.0: display_name max 32 karakter kısıtlaması, email index, players_own_delete politikası eklendi" },
+      { type: "improvement", text: "match_history tablosuna result index eklendi — profil sayfası maç geçmişi sorguları hızlandırıldı" },
+      { type: "improvement", text: "Periyodik last_seen güncelleme: giriş yapan oyuncu her 2 dakikada bir aktif sayılır" },
+      // Technical
+      { type: "fix", text: "html-to-image paketi package.json'a eklendi (orijinal repoda eksikti, ShareCard derleme hatasına yol açıyordu)" },
+      { type: "improvement", text: "Vite dev server config: host 0.0.0.0, port 5000, allowedHosts: true — Replit proxy iframe uyumluluğu" },
+      { type: "improvement", text: "github-sync.sh monorepo yollarından flat (kök dizin) yapısına güncellendi; .migration-backup/ ve vercel.json desteği eklendi" },
+      { type: "improvement", text: "package.json sürümü 0.0.2'ye güncellendi, html-to-image bağımlılığı eklendi" },
+      { type: "design", text: "Auth ekranları tam mobil ve masaüstü uyumlu: max-w-sm merkez, overflow-auto, min-h-[100dvh]" },
+      { type: "design", text: "Hata mesajları tutarlı kırmızı banner (#f87171), başarı mesajları yeşil banner (#4ade80)" },
+    ],
+  },
+  {
     version: "0.0.1",
     date: "11 Haziran 2026",
     label: "alpha",
