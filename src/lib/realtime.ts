@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { MPGameState, PlayerInput, ChatMessage } from "../types/game";
+import type { MPGameState, PlayerInput, ChatMessage, Team } from "../types/game";
 
 type RealtimeChannel = ReturnType<typeof supabase.channel>;
 
@@ -62,6 +62,30 @@ export function onChat(
 ): RealtimeChannel {
   return channel.on("broadcast", { event: "chat" }, ({ payload }) => {
     cb(payload as ChatMessage);
+  });
+}
+
+// ─── Forfeit (Maçı Terk) ──────────────────────────────────────────────────────
+
+export interface ForfeitPayload {
+  leaverUsername: string;
+  leaverTeam: Team;
+  currentScore: { red: number; blue: number };
+}
+
+export function broadcastForfeit(
+  channel: RealtimeChannel,
+  payload: ForfeitPayload
+): void {
+  channel.send({ type: "broadcast", event: "player_forfeit", payload });
+}
+
+export function onForfeit(
+  channel: RealtimeChannel,
+  cb: (payload: ForfeitPayload) => void
+): RealtimeChannel {
+  return channel.on("broadcast", { event: "player_forfeit" }, ({ payload }) => {
+    cb(payload as ForfeitPayload);
   });
 }
 

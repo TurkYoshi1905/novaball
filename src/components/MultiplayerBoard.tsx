@@ -1,42 +1,47 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send, LogOut } from "lucide-react";
+import { MessageCircle, X, Send } from "lucide-react";
 import type { MatchSession, Score, ChatMessage, Team, MPResult } from "../types/game";
 import { CANVAS_WIDTH, CANVAS_HEIGHT, RANKED_DURATION_MS } from "../types/game";
-import { createGameChannel, broadcastChat, onChat } from "../lib/realtime";
+import { createGameChannel, broadcastChat, onChat, broadcastForfeit } from "../lib/realtime";
 import { useMultiplayerPhysics } from "../hooks/useMultiplayerPhysics";
 import MobileControls from "./MobileControls";
 import { createMobileInput } from "../types/game";
 import { loadRP, saveRP, getRankForRP, calcRPForWin } from "../utils/rankSystem";
-import { getRankForRP as getrank } from "../utils/rankSystem";
 
 interface Props {
-  match: MatchSession;
-  localUsername: string;
-  localDisplayName: string;
-  isHost: boolean;
-  ranked: boolean;
-  onMatchEnd: (result: MPResult) => void;
-  onLeave: () => void;
+  match:             MatchSession;
+  localUsername:     string;
+  localDisplayName:  string;
+  isHost:            boolean;
+  ranked:            boolean;
+  onMatchEnd:        (result: MPResult) => void;
+  onLeave:           () => void;
 }
 
-function fmtTime(ms: number): string {
+const isTouchDevice = typeof window !== "undefined" &&
+  ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+
+function fmtCountdown(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+function fmtCountup(ms: number): string {
+  const s = Math.floor(ms / 1000);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 function calcMPRP(
   winnerTeam: Team | "draw",
-  redGoals: number,
-  blueGoals: number,
   myTeam: Team,
   allPlayers: Array<{ username: string; displayName: string; team: Team }>,
-  goalCounts: Record<string, number>
+  goalCounts: Record<string, number>,
+  score: Score
 ): Array<{ username: string; displayName: string; goals: number; rpGained: number }> {
   if (winnerTeam === "draw" || winnerTeam !== myTeam) {
     return allPlayers.map(p => ({ username: p.username, displayName: p.displayName, goals: goalCounts[p.username] ?? 0, rpGained: 0 }));
   }
-  const totalGoals = winnerTeam === "red" ? redGoals : blueGoals;
+  const totalGoals = winnerTeam === "red" ? score.red : score.blue;
   const totalRP    = calcRPForWin(totalGoals);
   const winners    = allPlayers.filter(p => p.team === winnerTeam);
   const winnerGoals = winners.map(p => goalCounts[p.username] ?? 0);
@@ -53,23 +58,30 @@ function calcMPRP(
   ];
 }
 
-export default function MultiplayerBoard({ match, localUsername, localDisplayName, isHost, ranked, onMatchEnd, onLeave }: Props) {
-  const canvasRef     = useRef<HTMLCanvasElement>(null);
+export default function MultiplayerBoard({
+  match, localUsername, localDisplayName, isHost, ranked, onMatchEnd, onLeave,
+}: Props) {
+  const canvasRef      = useRef<HTMLCanvasElement>(null);
   const mobileInputRef = useRef(createMobileInput());
-  const [chatOpen, setChatOpen]   = useState(false);
-  const [messages, setMessages]   = useState<ChatMessage[]>([]);
-  const [inputText, setInputText] = useState("");
-  const chatEndRef    = useRef<HTMLDivElement>(null);
-  const chatChannelRef = useRef<ReturnType<typeof createGameChannel> | null>(null);
-  const endHandledRef  = useRef(false);
+  const [chatOpen,   setChatOpen]   = useState(false);
+  const [messages,   setMessages]   = useState<ChatMessage[]>([]);
+  const [inputText,  setInputText]  = useState("");
+  const [goalFlash,  setGoalFlash]  = useState<Team | null>(null);
+  const chatEndRef      = useRef<HTMLDivElement>(null);
+  const chatChannelRef  = useRef<ReturnType<typeof createGameChannel> | null>(null);
+  const endHandledRef   = useRef(false);
+  const scoreRef        = useRef<Score>({ red: 0, blue: 0 });
 
-  const myTeam: Team = match.redTeam.some(m => m.username === localUsername) ? "red" : "blue";
-  const allPlayers   = [
+  const myTeam: Team   = match.redTeam.some(m => m.username === localUsername) ? "red" : "blue";
+  const oppTeam: Team  = myTeam === "red" ? "blue" : "red";
+  const opponents      = oppTeam === "red" ? match.redTeam : match.blueTeam;
+  const oppName        = opponents[0]?.displayName || opponents[0]?.username || "Rakip";
+  const allPlayers     = [
     ...match.redTeam.map(m => ({ ...m, team: "red" as Team })),
     ...match.blueTeam.map(m => ({ ...m, team: "blue" as Team })),
   ];
 
-  // Setup chat channel
+  // Sohbet kanalını kur
   useState(() => {
     const ch = createGameChannel(`${match.channelId}-chat`);
     chatChannelRef.current = ch;
@@ -80,43 +92,66 @@ export default function MultiplayerBoard({ match, localUsername, localDisplayNam
     ch.subscribe();
   });
 
-  const handleGameEnd = useCallback((score: Score, goalCounts: Record<string, number>) => {
+  // ─── Maç sonu ─────────────────────────────────────────────────────────────
+  const finishGame = useCallback((
+    score: Score,
+    goalCounts: Record<string, number>,
+    forfeit = false,
+    forfeitLeaverTeam?: Team
+  ) => {
     if (endHandledRef.current) return;
     endHandledRef.current = true;
     chatChannelRef.current?.unsubscribe();
 
-    const winnerTeam: Team | "draw" =
-      score.red > score.blue ? "red" :
-      score.blue > score.red ? "blue" : "draw";
-    const didWin = winnerTeam === myTeam;
-    const prevRP = loadRP();
-    const playerStats = calcMPRP(winnerTeam, score.red, score.blue, myTeam, allPlayers, goalCounts);
-    const me      = playerStats.find(p => p.username === localUsername);
-    const rpGained = ranked && didWin ? (me?.rpGained ?? 0) : 0;
-    const newRP   = prevRP + rpGained;
+    let winnerTeam: Team | "draw";
+    if (forfeit && forfeitLeaverTeam) {
+      winnerTeam = forfeitLeaverTeam === "red" ? "blue" : "red";
+    } else {
+      winnerTeam = score.red > score.blue ? "red" : score.blue > score.red ? "blue" : "draw";
+    }
+
+    const didWin  = winnerTeam === myTeam;
+    const prevRP  = loadRP();
+    const stats   = calcMPRP(winnerTeam, myTeam, allPlayers, goalCounts, score);
+    const me      = stats.find(p => p.username === localUsername);
+
+    let rpGained = 0;
+    if (ranked && didWin) rpGained = forfeit ? 10 : (me?.rpGained ?? 0);
+    const newRP = prevRP + rpGained;
     if (rpGained > 0) saveRP(newRP);
 
-    const result: MPResult = {
-      mode: match.mode,
-      isRanked: ranked,
-      winnerTeam,
-      redGoals: score.red, blueGoals: score.blue,
-      myTeam,
-      rpGained,
-      prevRP, newRP,
-      rankChanged: getrank(newRP).fullName !== getrank(prevRP).fullName,
-      prevRankName: getrank(prevRP).fullName,
-      newRankName:  getrank(newRP).fullName,
-      playerStats,
-    };
-    onMatchEnd(result);
-  }, [myTeam, ranked, localUsername, onMatchEnd, allPlayers, match.mode]);
+    onMatchEnd({
+      mode: match.mode, isRanked: ranked,
+      winnerTeam, redGoals: score.red, blueGoals: score.blue,
+      myTeam, rpGained, prevRP, newRP,
+      rankChanged:  getRankForRP(newRP).fullName !== getRankForRP(prevRP).fullName,
+      prevRankName: getRankForRP(prevRP).fullName,
+      newRankName:  getRankForRP(newRP).fullName,
+      playerStats: stats, forfeit,
+    });
+  }, [myTeam, ranked, localUsername, onMatchEnd, allPlayers, match.mode]); // eslint-disable-line
 
-  const { score, gameTimeMs, phase } = useMultiplayerPhysics({
+  const handleOpponentForfeit = useCallback((leaverTeam: Team, currentScore: Score) => {
+    finishGame(currentScore, {}, true, leaverTeam);
+  }, [finishGame]);
+
+  const { score, gameTimeMs, phase, lastGoalTeam } = useMultiplayerPhysics({
     canvasRef, match, localUsername, isHost, ranked,
-    mobileInputRef, onGameEnd: handleGameEnd,
+    mobileInputRef, onGameEnd: finishGame, onOpponentForfeit: handleOpponentForfeit,
   });
 
+  scoreRef.current = score;
+
+  // Gol flash — phase "goal_pause" olunca tetikle, "playing"'e dönnce temizle
+  useEffect(() => {
+    if (phase === "goal_pause" && lastGoalTeam) {
+      setGoalFlash(lastGoalTeam);
+    } else if (phase === "playing") {
+      setGoalFlash(null);
+    }
+  }, [phase, lastGoalTeam]);
+
+  // ─── Sohbet ───────────────────────────────────────────────────────────────
   const sendMessage = () => {
     if (!inputText.trim() || !chatChannelRef.current) return;
     const msg: ChatMessage = {
@@ -129,78 +164,132 @@ export default function MultiplayerBoard({ match, localUsername, localDisplayNam
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   };
 
-  const timeLeft   = ranked ? gameTimeMs : null;
-  const teamColor  = myTeam === "red" ? "#e63535" : "#4488ff";
+  // ─── Ayrıl (ranked maçta forfeit yayınla) ────────────────────────────────
+  const handleLeave = useCallback(() => {
+    if (ranked && phase !== "finished" && !endHandledRef.current) {
+      const ch = createGameChannel(match.channelId);
+      ch.subscribe(() => {
+        broadcastForfeit(ch, { leaverUsername: localUsername, leaverTeam: myTeam, currentScore: scoreRef.current });
+        setTimeout(() => ch.unsubscribe(), 500);
+      });
+    }
+    onLeave();
+  }, [ranked, phase, localUsername, myTeam, match.channelId, onLeave]);
+
+  const timeDisplay = ranked ? fmtCountdown(gameTimeMs) : fmtCountup(gameTimeMs);
+  const urgent      = ranked && gameTimeMs < 15_000;
 
   return (
-    <div className="novaball-screen flex flex-col items-center justify-center min-h-[100dvh] bg-[#070d16] relative overflow-hidden landscape-only">
-      {/* Portrait warning */}
-      <div className="portrait-warning fixed inset-0 z-50 flex-col items-center justify-center bg-[#070d16] hidden">
-        <span className="text-5xl">📱</span>
-        <p className="text-white font-bold text-lg mt-4 text-center px-8">Yatay moda geç</p>
-      </div>
+    <div className="game-board-outer">
 
-      {/* HUD */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2 bg-gradient-to-b from-black/60 to-transparent">
-        <button onClick={onLeave}
-          className="flex items-center gap-1 text-white/30 hover:text-white/70 transition-colors text-xs font-semibold">
-          <LogOut size={12} /> Ayrıl
-        </button>
-
-        {/* Skor */}
-        <div className="flex items-center gap-3">
-          <span className="text-[#e63535] font-black text-2xl tabular-nums">{score.red}</span>
-          <div className="flex flex-col items-center">
-            <span className="text-white/40 text-lg font-black">—</span>
-            {timeLeft !== null && (
-              <span className={`text-xs font-bold tabular-nums ${timeLeft < 30000 ? "text-[#f87171]" : "text-white/50"}`}>
-                {fmtTime(timeLeft)}
-              </span>
-            )}
-          </div>
-          <span className="text-[#4488ff] font-black text-2xl tabular-nums">{score.blue}</span>
-        </div>
-
-        {/* Mod + sohbet */}
-        <div className="flex items-center gap-2">
-          <span className="text-white/30 text-xs font-semibold">{match.mode}</span>
-          <button
-            onClick={() => setChatOpen(o => !o)}
-            className={`p-1.5 rounded-lg transition-all ${chatOpen ? "bg-[#4af]/20 text-[#4af]" : "text-white/30 hover:text-white/60"}`}
-          >
-            <MessageCircle size={14} />
-          </button>
+      {/* Portrait uyarısı */}
+      <div className="portrait-overlay">
+        <div className="flex flex-col items-center gap-3 text-center px-8">
+          <span className="text-5xl">📱</span>
+          <p className="text-white font-bold text-xl">Telefonu yatay tut</p>
+          <p className="text-white/40 text-sm">NovaBall yatay ekranda daha iyi oynanır.</p>
         </div>
       </div>
 
-      {/* Canvas */}
-      <div className="relative">
-        <canvas
-          ref={canvasRef}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
-          className="block max-w-full"
-          style={{ maxHeight: "calc(100dvh - 80px)", aspectRatio: "16/9" }}
-        />
+      {/* ── HUD ── */}
+      <div className="game-hud">
 
-        {/* Goal flash */}
-        <AnimatePresence>
-          {phase === "goal_pause" && (
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 flex items-center justify-center pointer-events-none"
+        {/* Sol: lokal oyuncu */}
+        <div className="hud-side">
+          <div className={`hud-dot hud-dot-${myTeam}`} />
+          <span className="hud-username">{localDisplayName}</span>
+          {ranked && <span className="hud-badge-ranked">Rekabet</span>}
+        </div>
+
+        {/* Orta: skor + süre */}
+        <div className="hud-center">
+          <span className={`hud-score ${goalFlash === "red" ? "hud-score-flash-red" : "hud-score-red"}`}>
+            {score.red}
+          </span>
+          <span className="hud-score-sep">—</span>
+          <span className={`hud-score ${goalFlash === "blue" ? "hud-score-flash-blue" : "hud-score-blue"}`}>
+            {score.blue}
+          </span>
+          <div className="hud-divider" />
+          <span className={`hud-time ${urgent ? "hud-time-urgent" : ""}`}>
+            {timeDisplay}
+          </span>
+        </div>
+
+        {/* Sağ: rakip + kontroller */}
+        <div className="hud-side hud-right">
+          <div className="hud-desktop-btns">
+            <button
+              onClick={() => setChatOpen(o => !o)}
+              className={`hud-ctrl-btn ${chatOpen ? "!bg-[#4af]/20 !text-[#4af] !border-[#4af]/30" : ""}`}
+              title="Sohbet"
             >
-              <motion.span
-                initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                className="text-white font-black text-6xl"
-                style={{ textShadow: "0 0 40px #fff" }}
-              >GOL! ⚽</motion.span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <MessageCircle size={13} />
+            </button>
+            <button onClick={handleLeave} className="hud-ctrl-btn" title="Ayrıl">✕</button>
+          </div>
+          <span className="hud-username hud-ai">{oppName}</span>
+          <div className={`hud-dot hud-dot-${oppTeam}`} />
+        </div>
       </div>
 
-      {/* Sohbet paneli */}
+      {/* ── Canvas alanı ── */}
+      <div className="game-canvas-zone">
+        <div className="game-canvas-wrapper">
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            className="game-canvas"
+          />
+
+          {/* Gol flash overlay */}
+          {goalFlash && (
+            <div
+              className="goal-flash-overlay"
+              style={{
+                background: goalFlash === "red"
+                  ? "radial-gradient(ellipse at center,rgba(230,53,53,.18) 0%,transparent 70%)"
+                  : "radial-gradient(ellipse at center,rgba(34,102,238,.18) 0%,transparent 70%)",
+              }}
+            />
+          )}
+
+          {/* GOL! yazısı */}
+          <AnimatePresence>
+            {phase === "goal_pause" && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              >
+                <motion.span
+                  initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                  className="text-white font-black text-7xl"
+                  style={{ textShadow: "0 0 50px #fff, 0 0 20px rgba(255,255,255,0.5)" }}
+                >
+                  GOL! ⚽
+                </motion.span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* ── Klavye ipuçları (masaüstü) ── */}
+      {!isTouchDevice && (
+        <div className="keyboard-hints">
+          <span><kbd className="kbd-key">W A S D</kbd> Hareket</span>
+          <span><kbd className="kbd-key">SPACE/X</kbd> Şut (basılı tut = güçlü)</span>
+          <span><kbd className="kbd-key">Sol ⇧</kbd> Depar</span>
+        </div>
+      )}
+
+      {/* ── Mobil kontroller ── */}
+      {isTouchDevice && (
+        <MobileControls inputRef={mobileInputRef} onMenu={handleLeave} />
+      )}
+
+      {/* ── Sohbet paneli ── */}
       <AnimatePresence>
         {chatOpen && (
           <motion.div
@@ -246,17 +335,6 @@ export default function MultiplayerBoard({ match, localUsername, localDisplayNam
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Mobil kontroller */}
-      <MobileControls inputRef={mobileInputRef} onMenu={onLeave} />
-
-      {/* Takım rengi göstergesi (sol alt) */}
-      <div className="absolute bottom-16 left-4 z-20 flex items-center gap-1.5">
-        <div className="w-3 h-3 rounded-full" style={{ background: teamColor }} />
-        <span className="text-xs font-semibold" style={{ color: `${teamColor}b0` }}>
-          {myTeam === "red" ? "Kırmızı" : "Mavi"} Takım
-        </span>
-      </div>
     </div>
   );
 }

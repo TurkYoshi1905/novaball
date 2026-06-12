@@ -51,6 +51,9 @@ export const RANKED_DURATION_MS  = 90_000;
 
 export const FOUNDING_DATE = "11 Haziran 2026";
 
+// Matchmaking: 90 saniye sonra otomatik iptal
+export const MATCHMAKING_TIMEOUT_MS = 90_000;
+
 export interface Vector2 {
   x: number;
   y: number;
@@ -128,6 +131,11 @@ export const MODE_TEAM_SIZE: Record<GameMode, number> = {
 };
 export const MODE_TOTAL = (m: GameMode) => MODE_TEAM_SIZE[m] * 2;
 
+export function modeFromMaxPlayers(maxPlayers: number): GameMode {
+  const map: Record<number, GameMode> = { 2: "1v1", 4: "2v2", 6: "3v3", 8: "4v4", 10: "5v5" };
+  return map[maxPlayers] ?? "1v1";
+}
+
 export type RoomStatus  = "waiting" | "starting" | "playing" | "finished";
 export type QueueStatus = "searching" | "matched" | "cancelled";
 
@@ -178,6 +186,7 @@ export interface MatchSession {
   blueTeam:     TeamMember[];
   status:       RoomStatus;
   createdAt:    string;
+  ranked:       boolean;
 }
 
 export interface CustomRoom {
@@ -190,6 +199,7 @@ export interface CustomRoom {
   status:       RoomStatus;
   channelId:    string;
   createdAt:    string;
+  ranked:       boolean;
 }
 
 export interface MPResult {
@@ -206,4 +216,5 @@ export interface MPResult {
   prevRankName: string;
   newRankName:  string;
   playerStats:  Array<{ username: string; displayName: string; goals: number; rpGained: number }>;
+  forfeit:      boolean;
 }

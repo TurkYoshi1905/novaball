@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
-import type { GameMode, TeamMember, MatchSession, CustomRoom, RoomStatus } from "../types/game";
+import type { GameMode, TeamMember, MatchSession, CustomRoom, RoomStatus, modeFromMaxPlayers } from "../types/game";
+import { modeFromMaxPlayers as modeFromMax } from "../types/game";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function uuid(): string {
@@ -65,7 +66,8 @@ export async function createMatch(
   mode: GameMode,
   hostUsername: string,
   redTeam: TeamMember[],
-  blueTeam: TeamMember[]
+  blueTeam: TeamMember[],
+  ranked = true
 ): Promise<{ match: MatchSession | null; error: string | null }> {
   const id = uuid();
   const channelId = `match-${id}`;
@@ -80,6 +82,7 @@ export async function createMatch(
       blue_team: blueTeam,
       status: "starting",
       channel_id: channelId,
+      ranked,
     })
     .select()
     .single();
@@ -95,6 +98,7 @@ export async function createMatch(
     blueTeam: data.blue_team,
     status: data.status,
     createdAt: data.created_at,
+    ranked: data.ranked ?? ranked,
   };
   return { match, error: null };
 }
@@ -122,6 +126,7 @@ export async function getMatch(matchId: string): Promise<MatchSession | null> {
     blueTeam: data.blue_team,
     status: data.status,
     createdAt: data.created_at,
+    ranked: data.ranked ?? true,
   };
 }
 
@@ -142,6 +147,7 @@ function rowToRoom(data: Record<string, unknown>): CustomRoom {
     status:       data.status as RoomStatus,
     channelId:    data.channel_id as string,
     createdAt:    data.created_at as string,
+    ranked:       (data.ranked as boolean) ?? false,
   };
 }
 
@@ -149,7 +155,8 @@ export async function createRoom(
   name: string,
   hostUsername: string,
   hostDisplayName: string,
-  maxPlayers: number
+  maxPlayers: number,
+  ranked = false
 ): Promise<{ room: CustomRoom | null; error: string | null }> {
   const id = uuid();
   const { data, error } = await supabase
@@ -163,6 +170,7 @@ export async function createRoom(
       blue_team: [],
       status: "waiting",
       channel_id: `room-${id}`,
+      ranked,
     })
     .select()
     .single();

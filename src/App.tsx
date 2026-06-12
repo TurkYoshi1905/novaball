@@ -42,8 +42,6 @@ export default function App() {
   const loadPlayer = useCallback(async (authId: string) => {
     let player = await getPlayerByAuthId(authId);
 
-    // Kurtarma: kayıt sırasında RLS hatası yaşandıysa player oluşturulmamış olabilir.
-    // E-posta onayından gelen session'da user_metadata içinde username/display_name var.
     if (!player) {
       const { data: { session } } = await supabase.auth.getSession();
       const meta  = session?.user?.user_metadata as Record<string, string> | undefined;
@@ -171,7 +169,6 @@ export default function App() {
         username={username}
         displayName={displayName}
         onPlay={() => setScreen("playing")}
-        onPlayRanked={() => setScreen("ranked")}
         onMatchmaking={() => setScreen("mod-select")}
         onCustomRooms={() => setScreen("custom-rooms")}
         onShowRanks={() => setScreen("rankpage")}
@@ -187,9 +184,7 @@ export default function App() {
   if (screen === "changelog") return <ChangelogPage onBack={() => setScreen("menu")} />;
 
   if (screen === "playing") return <GameBoard username={username} onBackToMenu={() => setScreen("menu")} />;
-  if (screen === "ranked")  return (
-    <GameBoard username={username} ranked onBackToMenu={() => setScreen("menu")} onMatchEnd={handleMatchEnd} />
-  );
+
   if (screen === "result" && matchResult) {
     return (
       <MatchResult
@@ -282,7 +277,7 @@ export default function App() {
       <MatchIntroPage
         match={currentMatch}
         localUsername={username}
-        isRanked={isHost}
+        isRanked={currentMatch.ranked}
         onMatchStart={() => setScreen("multiplayer")}
       />
     );
@@ -295,7 +290,7 @@ export default function App() {
         localUsername={username}
         localDisplayName={displayName}
         isHost={isHost}
-        ranked={false}
+        ranked={currentMatch.ranked}
         onMatchEnd={handleMpMatchEnd}
         onLeave={() => { setCurrentMatch(null); setScreen("menu"); }}
       />

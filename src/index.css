@@ -165,7 +165,6 @@
      GAME BOARD — Masaüstü + Mobil Yatay Layout
   ═══════════════════════════════════════════════════════════════════════════ */
 
-  /* Outer container — masaüstünde dikey flex, tüm ekranı kaplar */
   .game-board-outer {
     width: 100%;
     height: 100dvh;
@@ -176,7 +175,6 @@
     position: relative;
   }
 
-  /* ── Portrait uyarısı: sadece portait modda göster ────────────────────────── */
   .portrait-overlay {
     display: none;
     position: fixed; inset: 0; z-index: 100;
@@ -187,7 +185,6 @@
     .portrait-overlay { display: flex; }
   }
 
-  /* ── HUD ─────────────────────────────────────────────────────────────────── */
   .game-hud {
     flex-shrink: 0;
     display: flex;
@@ -289,7 +286,6 @@
 
   .hud-desktop-btns { display: flex; gap: 4px; }
 
-  /* ── Canvas zone ─────────────────────────────────────────────────────────── */
   .game-canvas-zone {
     flex: 1;
     min-height: 0;
@@ -323,7 +319,6 @@
     pointer-events: none;
   }
 
-  /* ── Keyboard hints (masaüstü) ────────────────────────────────────────────── */
   .keyboard-hints {
     flex-shrink: 0;
     display: flex;
@@ -354,7 +349,6 @@
     -webkit-user-select: none;
   }
 
-  /* ── Joystick zone ─────────────────────────────────────────────────────────── */
   .mobile-joystick-zone {
     display: flex;
     flex-direction: column;
@@ -388,7 +382,6 @@
     transition: width .05s, height .05s;
   }
 
-  /* Direction hint arrows inside base */
   .joy-hint {
     position: absolute;
     font-size: 9px;
@@ -410,7 +403,6 @@
     font-weight: 600;
   }
 
-  /* ── Action zone ──────────────────────────────────────────────────────────── */
   .mobile-action-zone {
     display: flex;
     flex-direction: column;
@@ -441,7 +433,6 @@
     align-items: flex-end;
   }
 
-  /* Sprint button */
   .mobile-btn-sprint {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     width: 72px; height: 72px; border-radius: 50%;
@@ -460,7 +451,6 @@
     transform: scale(.93);
   }
 
-  /* Shoot button */
   .mobile-btn-shoot {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     width: 88px; height: 88px; border-radius: 50%;
@@ -493,7 +483,6 @@
     line-height: 1;
   }
 
-  /* Küçük ekranlarda kontrol boyutları */
   @media (max-height: 420px) {
     .mobile-controls-bar { height: 110px; padding: 6px 16px 8px; }
     .joy-base { width: 88px; height: 88px; }
@@ -503,7 +492,6 @@
     .mobile-btn-icon { font-size: 20px; }
   }
 
-  /* ── Şut güç barı wrapper & label ──────────────────────────────────────── */
   .mobile-shoot-wrapper {
     display: flex;
     align-items: center;
@@ -525,13 +513,11 @@
     white-space: nowrap;
   }
 
-  /* Masaüstünde mobil kontrollerini gizle */
   @media (min-width: 900px) {
     .mobile-controls-bar { display: none; }
     .hud-desktop-btns { display: flex; }
   }
 
-  /* Mobilde masaüstü ipuçlarını gizle */
   @media (max-width: 899px) {
     .keyboard-hints { display: none; }
     .hud-desktop-btns { display: none; }
@@ -549,7 +535,6 @@
     .hud-score { font-size: 22px; }
   }
 
-  /* ── Genel responsive ekran ────────────────────────────────────────────────── */
   @media (max-width: 640px) {
     .novaball-screen { min-height: 100dvh; }
   }

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Send, MessageCircle, X, Play } from "lucide-react";
 import type { CustomRoom, ChatMessage, MatchSession, TeamMember } from "../types/game";
+import { modeFromMaxPlayers } from "../types/game";
 import { subscribeToRoom, joinRoomTeam, leaveRoom, startRoom } from "../lib/matchmaking";
 import { createGameChannel, broadcastChat, onChat } from "../lib/realtime";
 
@@ -14,29 +15,48 @@ interface Props {
 }
 
 export default function RoomLobbyPage({ room: initialRoom, username, displayName, onStartMatch, onLeave }: Props) {
-  const [room, setRoom]         = useState<CustomRoom>(initialRoom);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [chatOpen, setChatOpen] = useState(false);
+  const [room, setRoom]           = useState<CustomRoom>(initialRoom);
+  const [messages, setMessages]   = useState<ChatMessage[]>([]);
+  const [chatOpen, setChatOpen]   = useState(false);
   const [inputText, setInputText] = useState("");
   const [switching, setSwitching] = useState(false);
-  const channelRef  = useRef<ReturnType<typeof createGameChannel> | null>(null);
-  const subRef      = useRef<ReturnType<typeof subscribeToRoom> | null>(null);
-  const chatEndRef  = useRef<HTMLDivElement>(null);
-  const isHost      = room.hostUsername === username;
-  const myTeam      = room.redTeam.some(m => m.username === username) ? "red"
-                    : room.blueTeam.some(m => m.username === username) ? "blue"
-                    : null;
+  const [kicked, setKicked]       = useState(false);
 
-  // Setup realtime
+  const channelRef      = useRef<ReturnType<typeof createGameChannel> | null>(null);
+  const subRef          = useRef<ReturnType<typeof subscribeToRoom> | null>(null);
+  const chatEndRef      = useRef<HTMLDivElement>(null);
+  const matchStartedRef = useRef(false);
+
+  const isHost = initialRoom.hostUsername === username;
+  const myTeam = room.redTeam.some(m => m.username === username) ? "red"
+               : room.blueTeam.some(m => m.username === username) ? "blue"
+               : null;
+
+  const buildMatch = (r: CustomRoom): MatchSession => ({
+    id: r.id, mode: modeFromMaxPlayers(r.maxPlayers), channelId: r.channelId,
+    hostUsername: r.hostUsername, redTeam: r.redTeam, blueTeam: r.blueTeam,
+    status: "starting", createdAt: r.createdAt, ranked: false,
+  });
+
   useEffect(() => {
     subRef.current = subscribeToRoom(initialRoom.id, updated => {
-      if (updated) setRoom(updated);
+      if (!updated) {
+        // Oda silindi — host ayrılmış olabilir
+        if (!isHost && !matchStartedRef.current) {
+          setKicked(true);
+          setTimeout(() => onLeave(), 2500);
+        }
+        return;
+      }
+      setRoom(updated);
+      if (updated.status === "playing" && !isHost && !matchStartedRef.current) {
+        matchStartedRef.current = true;
+        onStartMatch(buildMatch(updated));
+      }
     });
 
     const ch = createGameChannel(initialRoom.channelId);
     channelRef.current = ch;
-
-    // system join message
     const joinMsg: ChatMessage = {
       id: crypto.randomUUID(), username: "system", displayName: "Sistem",
       text: `${displayName} odaya katıldı.`, type: "system", ts: Date.now(),
@@ -46,23 +66,16 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     });
     ch.subscribe(status => {
-      if (status === "SUBSCRIBED") {
-        broadcastChat(ch, joinMsg);
-        setMessages([joinMsg]);
-      }
+      if (status === "SUBSCRIBED") { broadcastChat(ch, joinMsg); setMessages([joinMsg]); }
     });
 
-    return () => {
-      subRef.current?.unsubscribe();
-      ch.unsubscribe();
-    };
-  }, []);  // eslint-disable-line
+    return () => { subRef.current?.unsubscribe(); ch.unsubscribe(); };
+  }, []); // eslint-disable-line
 
   const sendMessage = () => {
     if (!inputText.trim() || !channelRef.current) return;
     const msg: ChatMessage = {
-      id: crypto.randomUUID(), username, displayName,
-      text: inputText.trim(), type: "user", ts: Date.now(),
+      id: crypto.randomUUID(), username, displayName, text: inputText.trim(), type: "user", ts: Date.now(),
     };
     broadcastChat(channelRef.current, msg);
     setMessages(prev => [...prev, msg]);
@@ -73,51 +86,57 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
   const handleSwitchTeam = async (team: "red" | "blue") => {
     if (team === myTeam) return;
     setSwitching(true);
-    const { room: updated, error } = await joinRoomTeam(room.id, { username, displayName }, team);
+    const { room: updated } = await joinRoomTeam(room.id, { username, displayName }, team);
     setSwitching(false);
     if (updated) setRoom(updated);
-    else if (error) console.error(error);
   };
 
   const handleLeave = async () => {
     if (channelRef.current) {
-      const leaveMsg: ChatMessage = {
+      broadcastChat(channelRef.current, {
         id: crypto.randomUUID(), username: "system", displayName: "Sistem",
         text: `${displayName} odadan ayrıldı.`, type: "system", ts: Date.now(),
-      };
-      broadcastChat(channelRef.current, leaveMsg);
+      });
     }
     await leaveRoom(room.id, username);
     onLeave();
   };
 
   const handleStartMatch = async () => {
+    if (matchStartedRef.current) return;
+    matchStartedRef.current = true;
     await startRoom(room.id);
-    const match: MatchSession = {
-      id: room.id,
-      mode: "1v1",
-      channelId: room.channelId,
-      hostUsername: room.hostUsername,
-      redTeam: room.redTeam,
-      blueTeam: room.blueTeam,
-      status: "starting",
-      createdAt: room.createdAt,
-    };
-    onStartMatch(match);
+    onStartMatch(buildMatch(room));
   };
 
+  // Atıldı ekranı
+  if (kicked) {
+    return (
+      <div className="novaball-screen flex flex-col items-center justify-center min-h-[100dvh] bg-[#070d16] px-5 gap-6">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          className="flex flex-col items-center gap-4 text-center"
+        >
+          <span className="text-5xl">🚪</span>
+          <h2 className="text-white font-black text-2xl">Oda Kapandı</h2>
+          <p className="text-white/40 text-sm">Oda sahibi odadan ayrıldı.<br />Ana lobiye yönlendiriliyorsunuz…</p>
+        </motion.div>
+      </div>
+    );
+  }
+
   const TeamColumn = ({ team, members }: { team: "red" | "blue"; members: TeamMember[] }) => {
-    const color    = team === "red" ? "#e63535" : "#4488ff";
-    const label    = team === "red" ? "🔴 Kırmızı Takım" : "🔵 Mavi Takım";
-    const isMine   = myTeam === team;
+    const color  = team === "red" ? "#e63535" : "#4488ff";
+    const label  = team === "red" ? "🔴 Kırmızı" : "🔵 Mavi";
+    const isMine = myTeam === team;
     return (
       <div
         className="flex-1 flex flex-col gap-3 p-4 rounded-2xl border transition-all"
-        style={{ borderColor: `${color}${isMine ? "60" : "25"}`, background: `${color}${isMine ? "12" : "06"}` }}
+        style={{ borderColor: `${color}${isMine ? "55" : "22"}`, background: `${color}${isMine ? "10" : "05"}` }}
       >
         <div className="flex items-center justify-between">
           <span className="font-bold text-sm" style={{ color }}>{label}</span>
-          <span className="text-white/30 text-xs">{members.length} kişi</span>
+          <span className="text-white/30 text-xs">{members.length}</span>
         </div>
         <div className="flex flex-col gap-1.5 min-h-[60px]">
           {members.map((m, i) => (
@@ -127,8 +146,7 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
                 style={{ background: color }}
               >{i + 1}</span>
               <span className={`text-xs truncate ${m.username === username ? "text-white font-bold" : "text-white/60"}`}>
-                {m.displayName}
-                {m.username === room.hostUsername && " 👑"}
+                {m.displayName}{m.username === room.hostUsername && " 👑"}
               </span>
             </div>
           ))}
@@ -139,56 +157,51 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
           onClick={() => handleSwitchTeam(team)}
           disabled={isMine || switching}
           className="w-full py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-40"
-          style={
-            isMine
-              ? { background: `${color}25`, border: `1px solid ${color}40`, color }
-              : { background: `${color}10`, border: `1px solid ${color}25`, color }
-          }
+          style={{ background: `${color}${isMine ? "25" : "10"}`, border: `1px solid ${color}${isMine ? "40" : "22"}`, color }}
         >
-          {isMine ? "✓ Bu Takımdasın" : `${label.split(" ")[1]} Takıma Katıl`}
+          {isMine ? "✓ Bu Takımdasın" : "Katıl"}
         </motion.button>
       </div>
     );
   };
 
-  const totalPlayers = room.redTeam.length + room.blueTeam.length;
-
   return (
     <div className="novaball-screen flex flex-col min-h-[100dvh] bg-[#070d16] relative overflow-hidden">
       <div className="pitch-glow" />
-
       <div className="relative z-10 flex flex-col w-full max-w-lg mx-auto px-4 py-6 gap-4 h-full">
+
         {/* Üst bar */}
         <div className="flex items-center justify-between">
           <button onClick={handleLeave}
             className="flex items-center gap-1.5 text-[#f87171]/70 hover:text-[#f87171] transition-colors text-sm font-semibold">
-            <ArrowLeft size={14} /> Özel Maçtan Ayrıl
+            <ArrowLeft size={14} /> Odadan Ayrıl
           </button>
           <div className="flex flex-col items-end">
             <span className="text-white font-bold text-sm truncate max-w-[160px]">{room.name}</span>
-            <span className="text-white/30 text-xs">{totalPlayers}/{room.maxPlayers} oyuncu</span>
+            <span className="text-white/30 text-xs">
+              {room.redTeam.length + room.blueTeam.length}/{room.maxPlayers} oyuncu · Serbest Maç
+            </span>
           </div>
         </div>
 
-        {/* Takım seçimi */}
+        {/* Takımlar */}
         <div className="flex gap-3">
           <TeamColumn team="red"  members={room.redTeam}  />
           <TeamColumn team="blue" members={room.blueTeam} />
         </div>
 
-        {/* Başlat (sadece host) */}
-        {isHost && (
+        {/* Başlat / Bekle */}
+        {isHost ? (
           <motion.button
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
             onClick={handleStartMatch}
             disabled={room.redTeam.length === 0 || room.blueTeam.length === 0}
             className="w-full py-4 rounded-2xl font-black text-base text-white transition-all disabled:opacity-30 flex items-center justify-center gap-2"
-            style={{ background: "linear-gradient(135deg,#1a6aff,#44aaff)" }}
+            style={{ background: "linear-gradient(135deg,#6d28d9,#a78bfa)" }}
           >
             <Play size={16} /> Maçı Başlat
           </motion.button>
-        )}
-        {!isHost && (
+        ) : (
           <div className="w-full py-3 rounded-2xl text-center text-white/30 text-sm border border-white/8 bg-white/3">
             👑 Oda sahibinin maçı başlatması bekleniyor…
           </div>
@@ -229,18 +242,14 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
                   </div>
                   <div className="flex gap-2 p-2 border-t border-white/8">
                     <input
-                      type="text"
-                      value={inputText}
+                      type="text" value={inputText}
                       onChange={e => setInputText(e.target.value)}
                       onKeyDown={e => e.key === "Enter" && sendMessage()}
-                      placeholder="Mesaj yaz…"
-                      maxLength={100}
-                      className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs placeholder-white/25 outline-none focus:border-[#4af]/40 transition-all"
+                      placeholder="Mesaj yaz…" maxLength={100}
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs placeholder-white/25 outline-none focus:border-[#a78bfa]/40 transition-all"
                     />
-                    <button
-                      onClick={sendMessage}
-                      className="px-3 py-1.5 rounded-lg bg-[#4af]/15 border border-[#4af]/25 text-[#4af] hover:bg-[#4af]/25 transition-all"
-                    >
+                    <button onClick={sendMessage}
+                      className="px-3 py-1.5 rounded-lg bg-[#a78bfa]/15 border border-[#a78bfa]/25 text-[#a78bfa] hover:bg-[#a78bfa]/25 transition-all">
                       <Send size={12} />
                     </button>
                   </div>
