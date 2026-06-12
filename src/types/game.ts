@@ -151,12 +151,13 @@ export interface MPPlayer {
 }
 
 export interface MPGameState {
-  players:    MPPlayer[];
-  ball:       { x: number; y: number; vx: number; vy: number };
-  score:      Score;
-  gameTimeMs: number;
-  phase:      "countdown" | "playing" | "goal_pause" | "finished";
-  lastGoalTeam?: Team;
+  players:         MPPlayer[];
+  ball:            { x: number; y: number; vx: number; vy: number };
+  score:           Score;
+  gameTimeMs:      number;
+  phase:           "countdown" | "playing" | "goal_pause" | "finished";
+  lastGoalTeam?:   Team;
+  hasBallUsername: string | null;
 }
 
 export interface PlayerInput {

@@ -70,7 +70,6 @@ export default function MultiplayerBoard({
   const chatEndRef      = useRef<HTMLDivElement>(null);
   const chatChannelRef  = useRef<ReturnType<typeof createGameChannel> | null>(null);
   const endHandledRef   = useRef(false);
-  const scoreRef        = useRef<Score>({ red: 0, blue: 0 });
 
   const myTeam: Team   = match.redTeam.some(m => m.username === localUsername) ? "red" : "blue";
   const oppTeam: Team  = myTeam === "red" ? "blue" : "red";
@@ -135,12 +134,10 @@ export default function MultiplayerBoard({
     finishGame(currentScore, {}, true, leaverTeam);
   }, [finishGame]);
 
-  const { score, gameTimeMs, phase, lastGoalTeam } = useMultiplayerPhysics({
+  const { score, gameTimeMs, phase, lastGoalTeam, scoreRef } = useMultiplayerPhysics({
     canvasRef, match, localUsername, isHost, ranked,
     mobileInputRef, onGameEnd: finishGame, onOpponentForfeit: handleOpponentForfeit,
   });
-
-  scoreRef.current = score;
 
   // Gol flash — phase "goal_pause" olunca tetikle, "playing"'e dönnce temizle
   useEffect(() => {
