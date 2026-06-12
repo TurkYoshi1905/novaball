@@ -98,7 +98,9 @@ export interface MatchResultData {
 }
 
 export type AppScreen =
-  | "username"
+  | "login"
+  | "register"
+  | "email-verify"
   | "menu"
   | "rankpage"
   | "changelog"

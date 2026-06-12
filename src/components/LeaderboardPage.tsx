@@ -113,6 +113,11 @@ export default function LeaderboardPage({ currentUsername, onBack, onViewProfile
                 ? Math.round((p.total_wins / p.total_matches) * 100)
                 : 0;
 
+              const isOnline = p.last_seen
+                ? Date.now() - new Date(p.last_seen).getTime() < 5 * 60 * 1000
+                : false;
+              const displayLabel = p.display_name || p.username;
+
               return (
                 <button
                   key={p.username}
@@ -128,25 +133,37 @@ export default function LeaderboardPage({ currentUsername, onBack, onViewProfile
                     <PositionBadge pos={pos} />
                   </div>
 
-                  {/* Avatar */}
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center font-black text-base flex-shrink-0"
-                    style={{
-                      background: `linear-gradient(135deg,${rank.tier.color}60,${rank.tier.color}30)`,
-                      border: `1.5px solid ${rank.tier.color}40`,
-                    }}
-                  >
-                    <span className="text-white">{p.username.charAt(0).toUpperCase()}</span>
+                  {/* Avatar with online dot */}
+                  <div className="relative flex-shrink-0">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center font-black text-base"
+                      style={{
+                        background: `linear-gradient(135deg,${rank.tier.color}60,${rank.tier.color}30)`,
+                        border: `1.5px solid ${rank.tier.color}40`,
+                      }}
+                    >
+                      <span className="text-white">{displayLabel.charAt(0).toUpperCase()}</span>
+                    </div>
+                    {isOnline && (
+                      <span
+                        className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#070d16]"
+                        style={{ background: "#4ade80", boxShadow: "0 0 6px #4ade8080" }}
+                        title="Şu an çevrimiçi"
+                      />
+                    )}
                   </div>
 
                   {/* Name + rank */}
                   <div className="flex flex-col min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className={`font-bold text-sm truncate ${isMe ? "text-white" : "text-white/85"}`}>
-                        {p.username}
+                        {displayLabel}
                       </span>
                       {isMe && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#4af]/15 text-[#4af] flex-shrink-0">Sen</span>
+                      )}
+                      {isOnline && !isMe && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#4ade80]/12 text-[#4ade80] flex-shrink-0">Aktif</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5">

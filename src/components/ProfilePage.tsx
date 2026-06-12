@@ -59,7 +59,8 @@ export default function ProfilePage({ username, isOwnProfile, onBack }: Props) {
     return unsub;
   }, [username, fetchData]);
 
-  const initial = username.charAt(0).toUpperCase();
+  const displayName = player?.display_name || username;
+  const initial = displayName.charAt(0).toUpperCase();
   const rp = player?.rp ?? 0;
   const rank = getRankForRP(rp);
   const prog = getRPProgressInRank(rp);
@@ -125,7 +126,8 @@ export default function ProfilePage({ username, isOwnProfile, onBack }: Props) {
                 </div>
 
                 <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-white font-black text-xl truncate">{username}</span>
+                  <span className="text-white font-black text-xl truncate">{displayName}</span>
+                  <span className="text-white/30 text-xs mt-0.5">@{username}</span>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-lg">{rank.tier.icon}</span>
                     <span className="font-bold text-sm" style={{ color: rank.tier.color }}>{rank.fullName}</span>

@@ -2,6 +2,8 @@ import { supabase } from "./supabase";
 
 export interface PlayerRow {
   username: string;
+  display_name: string;
+  email?: string;
   rp: number;
   total_matches: number;
   total_wins: number;
@@ -9,6 +11,7 @@ export interface PlayerRow {
   total_draws: number;
   total_goals_scored: number;
   total_goals_conceded: number;
+  last_seen?: string;
   created_at: string;
   updated_at: string;
 }
@@ -27,40 +30,75 @@ export interface MatchRow {
   played_at: string;
 }
 
-// ─── Auth ──────────────────────────────────────────────────────────────────────
+const PUBLIC_COLS =
+  "username,display_name,rp,total_matches,total_wins,total_losses,total_draws,total_goals_scored,total_goals_conceded,last_seen,created_at,updated_at";
 
-/**
- * Mevcut oturumu döner. Oturum yoksa anonim olarak giriş yapar.
- * Her tarayıcı oturumuna benzersiz bir UUID atanır.
- */
+// ─── Auth helpers ──────────────────────────────────────────────────────────────
+
 export async function ensureAuth(): Promise<string | null> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user?.id) return session.user.id;
-
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error) {
-      console.warn("Anonim auth başarısız:", error.message);
-      return null;
-    }
+    const { data } = await supabase.auth.signInAnonymously();
     return data.user?.id ?? null;
-  } catch (e) {
-    console.warn("ensureAuth hatası:", e);
-    return null;
-  }
+  } catch { return null; }
 }
 
-// ─── Player ────────────────────────────────────────────────────────────────────
+// ─── Username / player lookup ──────────────────────────────────────────────────
+
+export async function isUsernameAvailable(username: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("players")
+    .select("username")
+    .eq("username", username)
+    .maybeSingle();
+  return !data;
+}
 
 /**
- * Kullanıcı adı girildiğinde çağrılır.
- * • Yeni oyuncu → INSERT (auth_id ile)
- * • Mevcut oyuncu, auth_id yoksa → sahipliği talep et
- * • RP çakışmasında büyük değer kazanır
+ * Returns the email stored for a given username (used for username-based login).
  */
+export async function findEmailByUsername(username: string): Promise<string | null> {
+  const { data } = await supabase
+    .rpc("get_email_by_username", { p_username: username });
+  return (data as string | null) ?? null;
+}
+
+export async function getPlayerByAuthId(authId: string): Promise<PlayerRow | null> {
+  const { data } = await supabase
+    .from("players")
+    .select(PUBLIC_COLS)
+    .eq("auth_id", authId)
+    .maybeSingle();
+  return data as PlayerRow | null;
+}
+
+// ─── Create / init ─────────────────────────────────────────────────────────────
+
+export async function createPlayer(
+  username: string,
+  displayName: string,
+  email: string,
+  authId: string,
+): Promise<void> {
+  await supabase.from("players").insert({
+    username,
+    display_name: displayName,
+    email,
+    auth_id: authId,
+    rp: 0,
+    total_matches: 0,
+    total_wins: 0,
+    total_losses: 0,
+    total_draws: 0,
+    total_goals_scored: 0,
+    total_goals_conceded: 0,
+  });
+}
+
+/** Legacy: anonymous login migration. Creates player if missing. */
 export async function initPlayer(username: string, localRP: number): Promise<number> {
   const authId = await ensureAuth();
-
   const { data } = await supabase
     .from("players")
     .select("rp, auth_id")
@@ -68,41 +106,28 @@ export async function initPlayer(username: string, localRP: number): Promise<num
     .maybeSingle();
 
   if (!data) {
-    // Yeni oyuncu — kayıt oluştur
     await supabase.from("players").insert({
-      username,
-      auth_id: authId,
-      rp: localRP,
-      total_matches: 0,
-      total_wins: 0,
-      total_losses: 0,
-      total_draws: 0,
-      total_goals_scored: 0,
-      total_goals_conceded: 0,
+      username, display_name: username, auth_id: authId,
+      rp: localRP, total_matches: 0, total_wins: 0,
+      total_losses: 0, total_draws: 0,
+      total_goals_scored: 0, total_goals_conceded: 0,
     });
     return localRP;
   }
-
-  // Mevcut oyuncu
-  const serverRP   = data.rp as number;
-  const hasAuthId  = !!data.auth_id;
-
-  // auth_id yoksa bu cihaz sahipliği talep eder
-  if (!hasAuthId && authId) {
-    await supabase
-      .from("players")
-      .update({ auth_id: authId, rp: Math.max(localRP, serverRP) })
-      .eq("username", username)
-      .is("auth_id", null);
+  const serverRP = data.rp as number;
+  if (!data.auth_id && authId) {
+    await supabase.from("players").update({ auth_id: authId, rp: Math.max(localRP, serverRP) }).eq("username", username).is("auth_id", null);
   } else if (localRP > serverRP) {
-    await supabase
-      .from("players")
-      .update({ rp: localRP })
-      .eq("username", username);
+    await supabase.from("players").update({ rp: localRP }).eq("username", username);
     return localRP;
   }
-
   return Math.max(localRP, serverRP);
+}
+
+// ─── Last seen ─────────────────────────────────────────────────────────────────
+
+export async function updateLastSeen(username: string): Promise<void> {
+  await supabase.from("players").update({ last_seen: new Date().toISOString() }).eq("username", username);
 }
 
 // ─── Match ─────────────────────────────────────────────────────────────────────
@@ -118,32 +143,22 @@ export async function saveMatch(params: {
   rpAfter: number;
   ranked: boolean;
 }): Promise<void> {
-  const {
-    username, opponentName, playerGoals, opponentGoals,
-    result, rpGained, rpBefore, rpAfter, ranked,
-  } = params;
+  const { username, opponentName, playerGoals, opponentGoals, result, rpGained, rpBefore, rpAfter, ranked } = params;
 
   await supabase.from("match_history").insert({
-    player_username: username,
-    opponent_name:   opponentName,
-    player_goals:    playerGoals,
-    opponent_goals:  opponentGoals,
-    result,
-    rp_gained:  rpGained,
-    rp_before:  rpBefore,
-    rp_after:   rpAfter,
-    ranked,
+    player_username: username, opponent_name: opponentName,
+    player_goals: playerGoals, opponent_goals: opponentGoals,
+    result, rp_gained: rpGained, rp_before: rpBefore, rp_after: rpAfter, ranked,
   });
 
   const { data: cur } = await supabase
     .from("players")
     .select("total_matches,total_wins,total_losses,total_draws,total_goals_scored,total_goals_conceded")
-    .eq("username", username)
-    .maybeSingle();
+    .eq("username", username).maybeSingle();
 
   if (cur) {
     await supabase.from("players").update({
-      rp:                   rpAfter,
+      rp: rpAfter,
       total_matches:        cur.total_matches + 1,
       total_wins:           cur.total_wins    + (result === "win"  ? 1 : 0),
       total_losses:         cur.total_losses  + (result === "loss" ? 1 : 0),
@@ -154,12 +169,12 @@ export async function saveMatch(params: {
   }
 }
 
-// ─── Leaderboard & Profile ─────────────────────────────────────────────────────
+// ─── Queries ───────────────────────────────────────────────────────────────────
 
 export async function getLeaderboard(): Promise<PlayerRow[]> {
   const { data } = await supabase
     .from("players")
-    .select("username,rp,total_matches,total_wins,total_losses,total_draws,total_goals_scored,total_goals_conceded,created_at,updated_at")
+    .select(PUBLIC_COLS)
     .order("rp", { ascending: false })
     .limit(100);
   return (data ?? []) as PlayerRow[];
@@ -168,7 +183,7 @@ export async function getLeaderboard(): Promise<PlayerRow[]> {
 export async function getPlayer(username: string): Promise<PlayerRow | null> {
   const { data } = await supabase
     .from("players")
-    .select("username,rp,total_matches,total_wins,total_losses,total_draws,total_goals_scored,total_goals_conceded,created_at,updated_at")
+    .select(PUBLIC_COLS)
     .eq("username", username)
     .maybeSingle();
   return data as PlayerRow | null;
@@ -186,45 +201,21 @@ export async function getMatchHistory(username: string, limit = 30): Promise<Mat
 
 // ─── Realtime ──────────────────────────────────────────────────────────────────
 
-/**
- * Lider tablosunu gerçek zamanlı dinler.
- * Herhangi bir oyuncunun RP'si değişince callback çağrılır.
- *
- * @returns unsubscribe fonksiyonu
- */
 export function subscribeLeaderboard(onUpdate: () => void): () => void {
   const channel = supabase
     .channel("leaderboard-realtime")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "players" },
-      onUpdate,
-    )
+    .on("postgres_changes", { event: "*", schema: "public", table: "players" }, onUpdate)
     .subscribe();
-
   return () => { supabase.removeChannel(channel); };
 }
 
-/**
- * Belirli bir oyuncunun maç geçmişini gerçek zamanlı dinler.
- * Yeni maç eklenince callback çağrılır.
- *
- * @returns unsubscribe fonksiyonu
- */
 export function subscribeMatchHistory(username: string, onUpdate: () => void): () => void {
   const channel = supabase
     .channel(`match-history-${username}`)
-    .on(
-      "postgres_changes",
-      {
-        event:  "INSERT",
-        schema: "public",
-        table:  "match_history",
-        filter: `player_username=eq.${username}`,
-      },
-      onUpdate,
-    )
+    .on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "match_history",
+      filter: `player_username=eq.${username}`,
+    }, onUpdate)
     .subscribe();
-
   return () => { supabase.removeChannel(channel); };
 }

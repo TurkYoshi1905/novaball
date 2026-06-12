@@ -1,5 +1,9 @@
-import { useState, useCallback } from "react";
-import UsernameScreen from "./components/UsernameScreen";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { supabase } from "./lib/supabase";
+import { signOut } from "./lib/auth";
+import LoginPage from "./components/auth/LoginPage";
+import RegisterPage from "./components/auth/RegisterPage";
+import EmailVerifyPage from "./components/auth/EmailVerifyPage";
 import MainMenu from "./components/MainMenu";
 import GameBoard from "./components/GameBoard";
 import RankPage from "./components/RankPage";
@@ -9,33 +13,67 @@ import ProfilePage from "./components/ProfilePage";
 import LeaderboardPage from "./components/LeaderboardPage";
 import type { AppScreen, MatchResultData } from "./types/game";
 import { loadRP, saveRP, getRankForRP, calcRPForWin } from "./utils/rankSystem";
-import { initPlayer, saveMatch } from "./lib/db";
+import { getPlayerByAuthId, updateLastSeen, saveMatch } from "./lib/db";
 
 export default function App() {
-  const [screen, setScreen] = useState<AppScreen>(() =>
-    localStorage.getItem("novaball_username") ? "menu" : "username"
-  );
-  const [username, setUsername] = useState<string>(
-    () => localStorage.getItem("novaball_username") ?? ""
-  );
-  const [matchResult, setMatchResult] = useState<MatchResultData | null>(null);
-  const [viewingUsername, setViewingUsername] = useState<string>("");
-  const [prevScreen, setPrevScreen] = useState<AppScreen>("menu");
+  const [screen,        setScreen]       = useState<AppScreen>("login");
+  const [username,      setUsername]     = useState("");
+  const [displayName,   setDisplayName]  = useState("");
+  const [pendingEmail,  setPendingEmail] = useState("");
+  const [matchResult,   setMatchResult]  = useState<MatchResultData | null>(null);
+  const [viewingUser,   setViewingUser]  = useState("");
+  const [prevScreen,    setPrevScreen]   = useState<AppScreen>("menu");
+  const lastSeenTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const handleUsername = useCallback(async (name: string) => {
-    setUsername(name);
+  // ─── Load player after successful auth ────────────────────────────────────
+  const loadPlayer = useCallback(async (authId: string) => {
+    const player = await getPlayerByAuthId(authId);
+    if (!player) return; // registration incomplete — stay on login
+    const serverRP = player.rp;
+    const localRP  = loadRP();
+    if (serverRP > localRP) saveRP(serverRP);
+    setUsername(player.username);
+    setDisplayName(player.display_name || player.username);
+    updateLastSeen(player.username).catch(() => {});
     setScreen("menu");
-    const localRP = loadRP();
-    try {
-      const serverRP = await initPlayer(name, localRP);
-      if (serverRP > localRP) {
-        saveRP(serverRP);
-      }
-    } catch (e) {
-      console.warn("Supabase init failed, using local RP", e);
-    }
   }, []);
 
+  // ─── Auth state machine ────────────────────────────────────────────────────
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) { setScreen("login"); return; }
+      if (!session.user.email_confirmed_at) {
+        setPendingEmail(session.user.email ?? "");
+        setScreen("email-verify");
+        return;
+      }
+      loadPlayer(session.user.id);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_OUT" || !session) { setScreen("login"); return; }
+      if (!session.user.email_confirmed_at) {
+        setPendingEmail(session.user.email ?? "");
+        setScreen("email-verify");
+        return;
+      }
+      await loadPlayer(session.user.id);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [loadPlayer]);
+
+  // ─── Periodic last_seen update ────────────────────────────────────────────
+  useEffect(() => {
+    if (!username) return;
+    if (lastSeenTimer.current) clearInterval(lastSeenTimer.current);
+    lastSeenTimer.current = setInterval(() => {
+      updateLastSeen(username).catch(() => {});
+    }, 2 * 60 * 1000);
+    return () => { if (lastSeenTimer.current) clearInterval(lastSeenTimer.current); };
+  }, [username]);
+
+  // ─── Match end handler ────────────────────────────────────────────────────
   const handleMatchEnd = useCallback(async (playerGoals: number, aiGoals: number) => {
     const won      = playerGoals > aiGoals;
     const drew     = playerGoals === aiGoals;
@@ -56,92 +94,88 @@ export default function App() {
     });
     setScreen("result");
 
-    // Persist to Supabase in background
-    try {
-      const result: "win" | "loss" | "draw" = won ? "win" : drew ? "draw" : "loss";
-      await saveMatch({
-        username,
-        opponentName: "AI",
-        playerGoals,
-        opponentGoals: aiGoals,
-        result,
-        rpGained,
-        rpBefore: prevRP,
-        rpAfter: newRP,
-        ranked: true,
-      });
-    } catch (e) {
-      console.warn("Supabase saveMatch failed", e);
-    }
+    const result: "win" | "loss" | "draw" = won ? "win" : drew ? "draw" : "loss";
+    saveMatch({
+      username, opponentName: "AI", playerGoals, opponentGoals: aiGoals,
+      result, rpGained, rpBefore: prevRP, rpAfter: newRP, ranked: true,
+    }).catch(() => {});
   }, [username]);
 
+  const handleLogout = useCallback(async () => {
+    if (lastSeenTimer.current) clearInterval(lastSeenTimer.current);
+    await signOut();
+    setUsername("");
+    setDisplayName("");
+  }, []);
+
   const handleViewProfile = useCallback((uname: string) => {
-    setViewingUsername(uname);
+    setViewingUser(uname);
     setPrevScreen(screen);
     setScreen("profile");
   }, [screen]);
 
-  if (screen === "username") {
-    return <UsernameScreen onContinue={handleUsername} />;
+  // ─── Screen render ─────────────────────────────────────────────────────────
+
+  if (screen === "login") {
+    return <LoginPage onGoRegister={() => setScreen("register")} />;
+  }
+  if (screen === "register") {
+    return (
+      <RegisterPage
+        onSuccess={(email) => { setPendingEmail(email); setScreen("email-verify"); }}
+        onGoLogin={() => setScreen("login")}
+      />
+    );
+  }
+  if (screen === "email-verify") {
+    return <EmailVerifyPage email={pendingEmail} onGoLogin={() => setScreen("login")} />;
   }
 
   if (screen === "menu") {
     return (
       <MainMenu
         username={username}
+        displayName={displayName}
         onPlay={() => setScreen("playing")}
         onPlayRanked={() => setScreen("ranked")}
         onShowRanks={() => setScreen("rankpage")}
         onShowChangelog={() => setScreen("changelog")}
-        onChangeUsername={() => setScreen("username")}
+        onLogout={handleLogout}
         onShowLeaderboard={() => setScreen("leaderboard")}
         onShowProfile={() => {
-          setViewingUsername(username);
+          setViewingUser(username);
           setPrevScreen("menu");
           setScreen("profile");
         }}
       />
     );
   }
-
-  if (screen === "rankpage") {
-    return <RankPage onBack={() => setScreen("menu")} />;
-  }
-
-  if (screen === "changelog") {
-    return <ChangelogPage onBack={() => setScreen("menu")} />;
-  }
+  if (screen === "rankpage")  return <RankPage onBack={() => setScreen("menu")} />;
+  if (screen === "changelog") return <ChangelogPage onBack={() => setScreen("menu")} />;
 
   if (screen === "playing") {
-    return (
-      <GameBoard
-        username={username}
-        onBackToMenu={() => setScreen("menu")}
-      />
-    );
+    return <GameBoard username={username} onBackToMenu={() => setScreen("menu")} />;
   }
-
   if (screen === "ranked") {
     return (
       <GameBoard
-        username={username}
-        ranked
+        username={username} ranked
         onBackToMenu={() => setScreen("menu")}
         onMatchEnd={handleMatchEnd}
       />
     );
   }
-
   if (screen === "result" && matchResult) {
     return (
       <MatchResult
         result={matchResult}
+        username={username}
+        displayName={displayName}
         onPlayAgain={() => setScreen("ranked")}
         onMenu={() => setScreen("menu")}
       />
     );
   }
-
   if (screen === "leaderboard") {
     return (
       <LeaderboardPage
@@ -151,16 +185,14 @@ export default function App() {
       />
     );
   }
-
   if (screen === "profile") {
     return (
       <ProfilePage
-        username={viewingUsername || username}
-        isOwnProfile={(viewingUsername || username) === username}
+        username={viewingUser || username}
+        isOwnProfile={(viewingUser || username) === username}
         onBack={() => setScreen(prevScreen)}
       />
     );
   }
-
   return null;
 }
