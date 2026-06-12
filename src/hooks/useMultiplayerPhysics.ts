@@ -206,18 +206,12 @@ export function useMultiplayerPhysics({
       ctx.lineWidth   = isLocal ? 2.5 : 1.5; ctx.stroke();
       ctx.shadowBlur  = 0;
 
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
-      ctx.font = `bold ${PLAYER_RADIUS}px Inter,sans-serif`;
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      // Sadece takım numarası — isim gösterilmez
+      ctx.fillStyle    = "rgba(255,255,255,0.92)";
+      ctx.font         = `bold ${PLAYER_RADIUS}px Inter,sans-serif`;
+      ctx.textAlign    = "center";
+      ctx.textBaseline = "middle";
       ctx.fillText(String(p.teamIndex), p.x, p.y);
-
-      ctx.fillStyle    = isLocal ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.55)";
-      ctx.font         = "bold 11px Inter,sans-serif";
-      ctx.textBaseline = "top";
-      const maxW = 72; let name = p.displayName;
-      while (ctx.measureText(name).width > maxW && name.length > 1) name = name.slice(0, -1);
-      if (name !== p.displayName) name += "…";
-      ctx.fillText(name, p.x, p.y + PLAYER_RADIUS + 10);
       ctx.restore();
     }
 
