@@ -459,9 +459,15 @@ ALTER PUBLICATION supabase_realtime ADD TABLE custom_rooms;
 --  2. Authentication → URL Configuration:
 --       Site URL       = https://novaball.vercel.app  (veya Replit URL)
 --       Redirect URLs  = https://novaball.vercel.app/**
---  3. Replit Secrets:
+--  3. Authentication → Rate Limits:
+--       "Emails sent per hour" = 100  (varsayılan 2 — over_email_send_rate_limit hatasını önler)
+--       Management API: PATCH /v1/projects/{ref}/config/auth  { "rate_limit_email_sent": 100 }
+--  4. Authentication → SMTP Settings (özel SMTP):
+--       Host: smtp.gmail.com  Port: 587  User: support.novaballofficial@gmail.com
+--       Gmail App Password (16 karakter) — 465 değil 587 (STARTTLS) kullan!
+--  5. Replit Secrets:
 --       VITE_SUPABASE_URL      = https://<proje-id>.supabase.co
 --       VITE_SUPABASE_ANON_KEY = <anon_key>
---  4. GitHub Actions (isteğe bağlı):
+--  6. GitHub Actions (isteğe bağlı):
 --       GITHUB_PAT secret → github-sync.sh push için
 -- ═══════════════════════════════════════════════════════════════════════════
