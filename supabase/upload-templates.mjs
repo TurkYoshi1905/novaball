@@ -59,45 +59,45 @@ const payload = {
   mailer_templates_reauthentication_content: read("reauthentication.html"),
 
   // Güvenlik bildirimleri
-  mailer_subjects_password_change:
+  mailer_subjects_password_changed_notification:
     "⚽ NovaBall — Şifren değiştirildi",
-  mailer_templates_password_change_content: read(
+  mailer_templates_password_changed_notification_content: read(
     "security-password-changed.html"
   ),
 
-  mailer_subjects_email_address_change:
+  mailer_subjects_email_changed_notification:
     "⚽ NovaBall — E-posta adresin değiştirildi",
-  mailer_templates_email_address_change_content: read(
+  mailer_templates_email_changed_notification_content: read(
     "security-email-changed.html"
   ),
 
-  mailer_subjects_phone_change:
+  mailer_subjects_phone_changed_notification:
     "⚽ NovaBall — Telefon numaran değiştirildi",
-  mailer_templates_phone_change_content: read(
+  mailer_templates_phone_changed_notification_content: read(
     "security-phone-changed.html"
   ),
 
-  mailer_subjects_signup_method_linked:
+  mailer_subjects_identity_linked_notification:
     "⚽ NovaBall — Yeni giriş yöntemi eklendi",
-  mailer_templates_signup_method_linked_content: read(
+  mailer_templates_identity_linked_notification_content: read(
     "security-signin-linked.html"
   ),
 
-  mailer_subjects_signup_method_removed:
+  mailer_subjects_identity_unlinked_notification:
     "⚽ NovaBall — Giriş yöntemi kaldırıldı",
-  mailer_templates_signup_method_removed_content: read(
+  mailer_templates_identity_unlinked_notification_content: read(
     "security-signin-removed.html"
   ),
 
-  mailer_subjects_mfa_factor_linked:
+  mailer_subjects_mfa_factor_enrolled_notification:
     "⚽ NovaBall — İki faktörlü doğrulama eklendi",
-  mailer_templates_mfa_factor_linked_content: read(
+  mailer_templates_mfa_factor_enrolled_notification_content: read(
     "security-mfa-added.html"
   ),
 
-  mailer_subjects_mfa_factor_removed:
+  mailer_subjects_mfa_factor_unenrolled_notification:
     "⚽ NovaBall — İki faktörlü doğrulama kaldırıldı",
-  mailer_templates_mfa_factor_removed_content: read(
+  mailer_templates_mfa_factor_unenrolled_notification_content: read(
     "security-mfa-removed.html"
   ),
 };
