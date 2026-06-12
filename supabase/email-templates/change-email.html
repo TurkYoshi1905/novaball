@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yeni E-postanı Onayla — NovaBall</title>
+</head>
+<body style="margin:0;padding:0;background:#0f0f0f;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f0f;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border-radius:16px;overflow:hidden;border:1px solid #2a2a2a;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#b45309 0%,#92400e 100%);padding:36px 40px;text-align:center;">
+              <div style="font-size:32px;font-weight:900;color:#ffffff;letter-spacing:-1px;">⚽ NovaBall</div>
+              <div style="font-size:13px;color:#fde68a;margin-top:4px;letter-spacing:2px;text-transform:uppercase;">Arcade Football</div>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 40px 32px;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#ffffff;">📧 Yeni e-posta adresini onayla</h1>
+              <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#a0a0a0;">
+                NovaBall hesabının e-posta adresini değiştirmek için bir istek aldık. Değişikliği onaylamak için aşağıdaki butona tıkla.
+              </p>
+
+              <!-- New Email Info -->
+              <div style="background:#111;border:1px solid #333;border-radius:10px;padding:16px;margin-bottom:24px;">
+                <p style="margin:0 0 4px;font-size:12px;color:#666;text-transform:uppercase;letter-spacing:1px;">Yeni e-posta adresi</p>
+                <p style="margin:0;font-size:16px;font-weight:600;color:#fbbf24;">{{ .NewEmail }}</p>
+              </div>
+
+              <!-- CTA Button -->
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+                <tr>
+                  <td style="background:#b45309;border-radius:10px;">
+                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;">
+                      ✅ Değişikliği Onayla
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 8px;font-size:13px;color:#666;">
+                Buton çalışmıyorsa aşağıdaki bağlantıyı tarayıcına yapıştır:
+              </p>
+              <p style="margin:0;font-size:12px;word-break:break-all;color:#b45309;">
+                {{ .ConfirmationURL }}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Warning Box -->
+          <tr>
+            <td style="padding:0 40px 28px;">
+              <div style="background:#1a0f0f;border:1px solid #7f1d1d;border-radius:10px;padding:16px;">
+                <p style="margin:0;font-size:13px;color:#f87171;">
+                  🚨 Bu değişikliği sen yapmadıysan hemen <a href="mailto:support.novaballofficial@gmail.com" style="color:#f87171;">destek</a> ile iletişime geç.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding:0 40px;">
+              <div style="border-top:1px solid #2a2a2a;"></div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 40px;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#555;">
+                Bu e-postayı talep etmediysen hesabın güvende olabilir, ama yine de destek ile iletişime geç.
+              </p>
+              <p style="margin:8px 0 0;font-size:12px;color:#444;">
+                © 2025 NovaBall · support.novaballofficial@gmail.com
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
