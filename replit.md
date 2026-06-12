@@ -98,11 +98,14 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - Mobilden: conic-gradient halkası ⚽ butonun çevresinde dolar.
 
 ### Canvas Çizim Stili
-- Oyuncular: takım renkli daire + içinde takım numarası — **sadece numara, isim yok**.
+- Oyuncular: takım renkli daire + içinde takım numarası + **dairenin altında displayName**.
+- Multiplayer canvas: daire içinde `teamIndex` numarası, hemen altında oyuncu `displayName` etiketi (lokal oyuncu daha parlak).
+- GameBoard (AI modu): daire içinde `name` metni, altında tekrar etiket (GameBoard stili).
 - Stamina barı: oyuncunun altında renkli ince bar (yeşil/sarı/kırmızı).
 - Kick charge arkı: basılı tutulunca oyuncunun etrafında renkli yay.
-- Top: sade beyaz daire — numara veya metin yok.
+- Top: radyal gradient beyaz daire — sahip varsa takım rengi parıltısı, serbest ve hızlıysa hız parıltısı.
 - Kale direkleri: beyaz küçük daireler.
+- Possession aura: top sahibi oyuncunun etrafında radyal gradient halkası (takım rengiyle).
 - RAF döngüsü dışında **asla** canvas'a yazılmaz.
 
 ### Çok Oyunculu (Multiplayer)
@@ -149,7 +152,6 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - RAF döngüsü dışında canvas'a yazma
 - Oyun durumu için `useState` kullanma (sadece HUD verileri için)
 - Özel oda maçlarını `ranked: true` yapma (her zaman `false`)
-- Canvas'ta oyuncu isimlerini gösterme — sadece takım numarası
 
 ## Oyun Sabitleri
 
@@ -175,11 +177,17 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - Custom room start bug FIX: `subscribeToRoom` callback'inde `status === "playing"` olunca guest otomatik navigate olur
 - Custom room host-leave bug FIX: `subscribeToRoom` null döndürünce misafirler otomatik olarak `onLeave()` çağrılır ve 2.5s sonra yönlendirilir
 - `MPResult.forfeit: boolean` gerekli alan — her `onMatchEnd` çağrısında geçirilmeli
-- Canvas çiziminde oyuncu isimleri **kaldırıldı** — sadece takım numarası (`teamIndex`) gösterilir
+- Multiplayer canvas: oyuncuların içinde `teamIndex` numarası + altında `displayName` etiketi gösterilir
 - `MultiplayerBoard` artık `game-board-outer` CSS sistemi kullanıyor (GameBoard ile aynı HUD)
 - Özel odalar her zaman `ranked: false` — `CreateRoomPage`'de toggle yok
 
 ## Son Değişiklikler (Haziran 2026)
+
+### v0.4 — MP Canvas İsim Gösterimi & Saha, Ranked AI Düzeltmesi (12 Haziran 2026)
+- **Multiplayer canvas oyuncu çizimi**: daire içinde `teamIndex` numarası + hemen altında `displayName` etiketi (lokal oyuncu daha parlak beyaz, diğerleri yarı saydam)
+- **Saha çizimi**: multiplayer ve özel oda maçlarında saha, `GameBoard` ile birebir aynı (çizgili zemin, ceza alanları, orta daire, köşe yayları, kale ızgarası, direkler)
+- **Ranked AI modu geri eklendi**: `App.tsx`'te `screen === "ranked"` ekranı eksikti; `MatchResult`'tan "Tekrar Oyna" düzgün çalışıyor
+- **Top tutma + çalma sistemi** (v0.4a): `useMultiplayerPhysics.ts`'e `POSSESS_DIST`, `attachBall()`, `STEAL_DIST` entegrasyonu; possession aura; releaseKick/tryKick şut sistemi; `hasBallUsername` MPGameState'e eklendi
 
 ### v0.3 — Multiplayer HUD & Maç Süresi (12 Haziran 2026)
 - **MultiplayerBoard tam yenileme**: GameBoard'daki tüm HUD CSS sınıfları entegre edildi (`game-board-outer`, `game-hud`, `hud-side`, `hud-center`, `hud-score`, `hud-time`, `game-canvas-zone`, `goal-flash-overlay`, `keyboard-hints`)

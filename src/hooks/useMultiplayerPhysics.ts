@@ -520,15 +520,21 @@ export function useMultiplayerPhysics({
       // İç parlama
       ctx.beginPath(); ctx.arc(p.x - PLAYER_RADIUS*.3, p.y - PLAYER_RADIUS*.35, PLAYER_RADIUS*.3, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(255,255,255,.22)"; ctx.fill();
-      // Takım numarası
+      // Takım numarası (daire içinde)
       ctx.font = `bold ${PLAYER_RADIUS}px Inter,sans-serif`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillStyle = "rgba(255,255,255,.92)";
       ctx.fillText(String(p.teamIndex), p.x, p.y);
+      // Oyuncu adı (dairenin altında)
+      const tag = p.displayName.length > 12 ? p.displayName.slice(0, 11) + "…" : p.displayName;
+      ctx.font = "bold 10px Inter,sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.fillStyle = isLocal ? "rgba(255,255,255,.90)" : "rgba(255,255,255,.65)";
+      ctx.fillText(tag, p.x, p.y + PLAYER_RADIUS + 5);
 
       // ── Stamina barı ───────────────────────────────────────────────────
       const bW = PLAYER_RADIUS * 2.8, bH = 5;
-      const bX = p.x - bW/2, bY = p.y + PLAYER_RADIUS + 22;
+      const bX = p.x - bW/2, bY = p.y + PLAYER_RADIUS + 18;
       const ratio = p.stamina / STAMINA_MAX;
       ctx.fillStyle = "rgba(0,0,0,.45)";
       ctx.beginPath(); ctx.roundRect?.(bX-1, bY-1, bW+2, bH+2, 3) ?? ctx.rect(bX-1, bY-1, bW+2, bH+2); ctx.fill();

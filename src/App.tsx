@@ -184,6 +184,7 @@ export default function App() {
   if (screen === "changelog") return <ChangelogPage onBack={() => setScreen("menu")} />;
 
   if (screen === "playing") return <GameBoard username={username} onBackToMenu={() => setScreen("menu")} />;
+  if (screen === "ranked")  return <GameBoard username={username} ranked onMatchEnd={handleMatchEnd} onBackToMenu={() => setScreen("menu")} />;
 
   if (screen === "result" && matchResult) {
     return (
