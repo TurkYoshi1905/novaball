@@ -4,27 +4,24 @@
 #
 #  Kullanım:
 #    bash github-sync.sh push ["commit mesajı"]   → GitHub'a gönder
-#    bash github-sync.sh pull                     → GitHub'dan src/ çek
+#    bash github-sync.sh pull                     → GitHub'dan çek
 #
 #  Nasıl çalışır (push):
 #    1) Repo /tmp altına klonlanır.
 #    2) İçi temizlenir (git rm -rf .).
-#    3) artifacts/novaball/ kaynak dosyaları düz yapıyla kopyalanır.
-#    4) Vercel uyumlu package.json + vite.config.ts + tsconfig.json yazılır.
-#    5) vercel.json, README.md, replit.md, github-sync.sh eklenir.
-#    6) Commit + push → GitHub güncellenir.
+#    3) Flat proje kökünden kaynak dosyalar kopyalanır.
+#    4) vercel.json, README.md, replit.md, github-sync.sh eklenir.
+#    5) Commit + push → GitHub güncellenir.
 #
-#  NOT: Replit monorepo yapısı GitHub'a gönderilmez.
-#       Sadece gerçek uygulama dosyaları (standalone Vite SPA) gönderilir.
+#  NOT: Yalnızca gerçek uygulama dosyaları (standalone Vite SPA) gönderilir.
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -e
 
 MODE="${1:-push}"
-COMMIT_MSG="${2:-NovaBall: Profil + Lider Tablosu + Supabase entegrasyonu}"
+COMMIT_MSG="${2:-NovaBall: güncelleme}"
 BRANCH="main"
 WORKSPACE="/home/runner/workspace"
-NOVABALL_SRC="$WORKSPACE/artifacts/novaball"
 DEPLOY_TMP="/tmp/novaball-deploy-$$"
 
 # GITHUB_PAT zorunlu
@@ -38,7 +35,7 @@ REPO_URL="https://TurkYoshi1905:${GITHUB_PAT}@github.com/TurkYoshi1905/novaball.
 
 echo ""
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║        NovaBall — GitHub Sync  (Flat Deploy)         ║"
+echo "║        NovaBall — GitHub Sync                        ║"
 echo "║  Mod  : $MODE                                        ║"
 echo "║  Dal  : $BRANCH                                      ║"
 echo "╚══════════════════════════════════════════════════════╝"
@@ -50,7 +47,6 @@ if [ "$MODE" = "push" ]; then
   echo "▶ [1/6] GitHub deposu klonlanıyor..."
   rm -rf "$DEPLOY_TMP"
   git clone "$REPO_URL" "$DEPLOY_TMP" --quiet 2>/dev/null || {
-    # Repo henüz yoksa boş olarak başlat
     mkdir -p "$DEPLOY_TMP"
     cd "$DEPLOY_TMP"
     git init --quiet
@@ -72,34 +68,44 @@ if [ "$MODE" = "push" ]; then
   echo "▶ [3/6] Kaynak dosyalar kopyalanıyor..."
 
   # src/ — tüm React + TypeScript kaynak kodu
-  cp -r "$NOVABALL_SRC/src" "$DEPLOY_TMP/src"
+  cp -r "$WORKSPACE/src" "$DEPLOY_TMP/src"
   SRC_COUNT=$(find "$DEPLOY_TMP/src" -name "*.ts" -o -name "*.tsx" | wc -l | tr -d ' ')
   echo "  ✓ src/ kopyalandı ($SRC_COUNT TypeScript/TSX dosyası)."
 
-  # public/ — favicon.png, icon-192.png, favicon.svg, opengraph.jpg, robots.txt
-  cp -r "$NOVABALL_SRC/public" "$DEPLOY_TMP/public"
-  PUB_COUNT=$(ls "$NOVABALL_SRC/public/" | wc -l | tr -d ' ')
-  echo "  ✓ public/ kopyalandı ($PUB_COUNT dosya: favicon.png, icon-192.png dahil)."
+  # public/ (varsa)
+  if [ -d "$WORKSPACE/public" ]; then
+    cp -r "$WORKSPACE/public" "$DEPLOY_TMP/public"
+    PUB_COUNT=$(ls "$WORKSPACE/public/" 2>/dev/null | wc -l | tr -d ' ')
+    echo "  ✓ public/ kopyalandı ($PUB_COUNT dosya)."
+  fi
 
   # index.html
-  cp "$NOVABALL_SRC/index.html" "$DEPLOY_TMP/index.html"
-  echo "  ✓ index.html kopyalandı."
+  if [ -f "$WORKSPACE/index.html" ]; then
+    cp "$WORKSPACE/index.html" "$DEPLOY_TMP/index.html"
+    echo "  ✓ index.html kopyalandı."
+  fi
 
   # supabase/ — SQL şema dosyaları
-  if [ -d "$NOVABALL_SRC/supabase" ]; then
-    cp -r "$NOVABALL_SRC/supabase" "$DEPLOY_TMP/supabase"
-    SQL_COUNT=$(find "$NOVABALL_SRC/supabase" -name "*.sql" | wc -l | tr -d ' ')
+  if [ -d "$WORKSPACE/supabase" ]; then
+    cp -r "$WORKSPACE/supabase" "$DEPLOY_TMP/supabase"
+    SQL_COUNT=$(find "$WORKSPACE/supabase" -name "*.sql" | wc -l | tr -d ' ')
     echo "  ✓ supabase/ kopyalandı ($SQL_COUNT SQL dosyası)."
   fi
 
-  echo ""
-  echo "▶ [4/6] Vercel uyumlu yapılandırma dosyaları oluşturuluyor..."
+  # .migration-backup/ (versiyon geçmiş notları)
+  if [ -d "$WORKSPACE/.migration-backup" ]; then
+    cp -r "$WORKSPACE/.migration-backup" "$DEPLOY_TMP/.migration-backup"
+    echo "  ✓ .migration-backup/ kopyalandı."
+  fi
 
-  # ── package.json (standalone — workspace catalog referansı yok) ──────────
+  echo ""
+  echo "▶ [4/6] Bağımlılık ve yapılandırma dosyaları oluşturuluyor..."
+
+  # package.json (html-to-image dahil)
   cat > "$DEPLOY_TMP/package.json" << 'PKGJSON'
 {
   "name": "novaball",
-  "version": "1.0.0",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -109,7 +115,8 @@ if [ "$MODE" = "push" ]; then
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.50.0"
+    "@supabase/supabase-js": "^2.50.0",
+    "html-to-image": "^1.11.13"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.14",
@@ -127,9 +134,9 @@ if [ "$MODE" = "push" ]; then
   }
 }
 PKGJSON
-  echo "  ✓ package.json yazıldı (standalone)."
+  echo "  ✓ package.json yazıldı (v0.0.2, html-to-image dahil)."
 
-  # ── vite.config.ts (Vercel uyumlu — Replit eklentileri yok) ─────────────
+  # vite.config.ts (Vercel uyumlu)
   cat > "$DEPLOY_TMP/vite.config.ts" << 'VITECFG'
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
@@ -151,9 +158,9 @@ export default defineConfig({
   },
 });
 VITECFG
-  echo "  ✓ vite.config.ts yazıldı (Vercel uyumlu)."
+  echo "  ✓ vite.config.ts yazıldı."
 
-  # ── tsconfig.json (standalone — workspace extends yok) ───────────────────
+  # tsconfig.json
   cat > "$DEPLOY_TMP/tsconfig.json" << 'TSCFG'
 {
   "compilerOptions": {
@@ -176,15 +183,22 @@ VITECFG
   "exclude": ["node_modules", "dist"]
 }
 TSCFG
-  echo "  ✓ tsconfig.json yazıldı (standalone)."
+  echo "  ✓ tsconfig.json yazıldı."
 
   echo ""
-  echo "▶ [5/6] Proje dosyaları ekleniyor (vercel.json, README.md, ...)..."
+  echo "▶ [5/6] Proje dosyaları ekleniyor..."
 
   # vercel.json
   if [ -f "$WORKSPACE/vercel.json" ]; then
     cp "$WORKSPACE/vercel.json" "$DEPLOY_TMP/vercel.json"
     echo "  ✓ vercel.json eklendi."
+  else
+    cat > "$DEPLOY_TMP/vercel.json" << 'VERCEL'
+{
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+}
+VERCEL
+    echo "  ✓ vercel.json oluşturuldu (SPA rewrites)."
   fi
 
   # README.md
@@ -233,11 +247,9 @@ GITIGNORE
     echo "══════════════════════════════════════════════════════"
     echo "  ✅ Başarılı! GitHub güncellendi."
     echo "  🔗 https://github.com/TurkYoshi1905/novaball"
-    echo "  🚀 Vercel otomatik derlemeyi başlatacak."
     echo "══════════════════════════════════════════════════════"
   fi
 
-  # Temp dizini temizle
   cd "$WORKSPACE"
   rm -rf "$DEPLOY_TMP"
   echo "  ✓ Geçici dosyalar temizlendi."
@@ -251,10 +263,10 @@ elif [ "$MODE" = "pull" ]; then
   echo "  ✓ Klonlandı."
 
   echo ""
-  echo "▶ [2/2] src/ ve public/ aktarılıyor → artifacts/novaball/..."
-  rm -rf "$NOVABALL_SRC/src"   && cp -r "$DEPLOY_TMP/src"   "$NOVABALL_SRC/src"
-  rm -rf "$NOVABALL_SRC/public" && cp -r "$DEPLOY_TMP/public" "$NOVABALL_SRC/public"
-  cp "$DEPLOY_TMP/index.html" "$NOVABALL_SRC/index.html" 2>/dev/null || true
+  echo "▶ [2/2] src/ ve public/ aktarılıyor..."
+  [ -d "$DEPLOY_TMP/src" ]    && rm -rf "$WORKSPACE/src"    && cp -r "$DEPLOY_TMP/src"    "$WORKSPACE/src"
+  [ -d "$DEPLOY_TMP/public" ] && rm -rf "$WORKSPACE/public" && cp -r "$DEPLOY_TMP/public" "$WORKSPACE/public"
+  [ -f "$DEPLOY_TMP/index.html" ] && cp "$DEPLOY_TMP/index.html" "$WORKSPACE/index.html"
 
   cd "$WORKSPACE"
   rm -rf "$DEPLOY_TMP"
