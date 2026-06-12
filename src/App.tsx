@@ -3,6 +3,7 @@ import UsernameScreen from "./components/UsernameScreen";
 import MainMenu from "./components/MainMenu";
 import GameBoard from "./components/GameBoard";
 import RankPage from "./components/RankPage";
+import ChangelogPage from "./components/ChangelogPage";
 import MatchResult from "./components/MatchResult";
 import type { AppScreen, MatchResultData } from "./types/game";
 import { loadRP, saveRP, getRankForRP, calcRPForWin } from "./utils/rankSystem";
@@ -53,6 +54,7 @@ export default function App() {
         onPlay={() => setScreen("playing")}
         onPlayRanked={() => setScreen("ranked")}
         onShowRanks={() => setScreen("rankpage")}
+        onShowChangelog={() => setScreen("changelog")}
         onChangeUsername={() => setScreen("username")}
       />
     );
@@ -60,6 +62,10 @@ export default function App() {
 
   if (screen === "rankpage") {
     return <RankPage onBack={() => setScreen("menu")} />;
+  }
+
+  if (screen === "changelog") {
+    return <ChangelogPage onBack={() => setScreen("menu")} />;
   }
 
   if (screen === "playing") {

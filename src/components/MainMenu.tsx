@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { FOUNDING_DATE } from "../types/game";
 import { loadRP, getRankForRP, getRPProgressInRank, ALL_RANKS } from "../utils/rankSystem";
+import CHANGELOG from "../utils/changelogData";
 
 interface Props {
   username: string;
   onPlay: () => void;
   onPlayRanked: () => void;
   onShowRanks: () => void;
+  onShowChangelog: () => void;
   onChangeUsername: () => void;
 }
 
-export default function MainMenu({ username, onPlay, onPlayRanked, onShowRanks, onChangeUsername }: Props) {
+export default function MainMenu({ username, onPlay, onPlayRanked, onShowRanks, onShowChangelog, onChangeUsername }: Props) {
   const [showHow, setShowHow] = useState(false);
   const initial = username.charAt(0).toUpperCase();
 
@@ -118,6 +120,22 @@ export default function MainMenu({ username, onPlay, onPlayRanked, onShowRanks, 
             className="novaball-btn-secondary w-full py-3 rounded-2xl text-white/70 font-bold text-base tracking-wide transition-all active:scale-[0.97]"
           >
             {showHow ? "✕ Kapat" : "? Nasıl Oynanır"}
+          </button>
+
+          {/* Güncelleme Notları */}
+          <button
+            onClick={onShowChangelog}
+            className="flex items-center justify-between w-full px-4 py-3 rounded-xl border border-white/8 bg-white/2 hover:bg-white/5 hover:border-white/15 transition-all active:scale-[0.98] group"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-base">📋</span>
+              <span className="text-white/55 font-semibold text-sm group-hover:text-white/80 transition-colors">
+                Güncelleme Notları
+              </span>
+            </div>
+            <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-[#4ade80]/12 text-[#4ade80] tracking-wide">
+              v{CHANGELOG[0].version}
+            </span>
           </button>
         </div>
 

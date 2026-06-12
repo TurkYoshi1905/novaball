@@ -97,7 +97,7 @@ export interface MatchResultData {
   newRankName: string;
 }
 
-export type AppScreen = "username" | "menu" | "rankpage" | "playing" | "ranked" | "result";
+export type AppScreen = "username" | "menu" | "rankpage" | "changelog" | "playing" | "ranked" | "result";
 
 export type BallOwner = "player" | "ai" | null;
 
