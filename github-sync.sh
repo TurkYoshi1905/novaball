@@ -85,6 +85,13 @@ if [ "$MODE" = "push" ]; then
   cp "$NOVABALL_SRC/index.html" "$DEPLOY_TMP/index.html"
   echo "  ✓ index.html kopyalandı."
 
+  # supabase/ — SQL şema dosyaları
+  if [ -d "$NOVABALL_SRC/supabase" ]; then
+    cp -r "$NOVABALL_SRC/supabase" "$DEPLOY_TMP/supabase"
+    SQL_COUNT=$(find "$NOVABALL_SRC/supabase" -name "*.sql" | wc -l | tr -d ' ')
+    echo "  ✓ supabase/ kopyalandı ($SQL_COUNT SQL dosyası)."
+  fi
+
   echo ""
   echo "▶ [4/6] Vercel uyumlu yapılandırma dosyaları oluşturuluyor..."
 

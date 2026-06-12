@@ -39,7 +39,6 @@ export default function App() {
   const handleMatchEnd = useCallback(async (playerGoals: number, aiGoals: number) => {
     const won      = playerGoals > aiGoals;
     const drew     = playerGoals === aiGoals;
-    const lost     = aiGoals > playerGoals;
     const prevRP   = loadRP();
     const rpGained = won ? calcRPForWin(playerGoals) : 0;
     const newRP    = prevRP + rpGained;
