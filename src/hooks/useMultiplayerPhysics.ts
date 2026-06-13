@@ -13,15 +13,12 @@ import {
   GOAL_RESET_DELAY, RANKED_DURATION_MS,
   Team, Score, MobileInput,
 } from "../types/game";
-import type { MPPlayer, MPGameState, PlayerInput, MatchSession } from "../types/game";
-import {
-  createGameChannel, broadcastGameState, onGameState,
-  broadcastInput, onPlayerInput, onForfeit,
-} from "../lib/realtime";
+import type { MPPlayer, MPGameState, PlayerInput, MatchSession, ChatMessage } from "../types/game";
+import { createRoomConnection, type RoomConnection } from "../lib/wsSync";
 
 const FRAME_MS      = 1000 / 60;
-const SYNC_MS       = 80;   // Host ~12fps durum yayını (429 önleme)
-const INPUT_MS      = 50;   // Client ~20fps girdi yayını (429 önleme)
+const SYNC_MS       = 33;   // Host ~30fps durum yayını (WebSocket — rate limit yok)
+const INPUT_MS      = 16;   // Client ~60fps girdi yayını (WebSocket — rate limit yok)
 const INPUT_HBEAT   = 200;  // Delta değişmese bile 5fps heartbeat gönder
 
 const CENTER_X = CANVAS_WIDTH / 2;
@@ -95,6 +92,7 @@ interface Options {
   mobileInputRef?:    React.RefObject<MobileInput | null>;
   onGameEnd?:         (score: Score, goalCounts: Record<string, number>, forfeit?: boolean, leaverTeam?: Team) => void;
   onOpponentForfeit?: (leaverTeam: Team, score: Score) => void;
+  onChatReceived?:    (msg: ChatMessage) => void;
 }
 
 // ─── Top iliştirme: oyuncunun önüne yapıştır ─────────────────────────────────
@@ -141,7 +139,7 @@ function tryKick(
 }
 
 export function useMultiplayerPhysics({
-  canvasRef, match, localUsername, isHost, ranked, mobileInputRef, onGameEnd, onOpponentForfeit,
+  canvasRef, match, localUsername, isHost, ranked, mobileInputRef, onGameEnd, onOpponentForfeit, onChatReceived,
 }: Options) {
   const [hudScore,        setHudScore]        = useState<Score>({ red: 0, blue: 0 });
   const [hudTime,         setHudTime]         = useState(ranked ? RANKED_DURATION_MS : 0);
@@ -151,7 +149,7 @@ export function useMultiplayerPhysics({
   const grRef       = useRef<GR | null>(null);
   const keysRef     = useRef<Set<string>>(new Set());
   const rafRef      = useRef<number>(0);
-  const channelRef  = useRef<ReturnType<typeof createGameChannel> | null>(null);
+  const wsConnRef   = useRef<RoomConnection | null>(null);
   const endFiredRef = useRef(false);
   const scoreRef    = useRef<Score>({ red: 0, blue: 0 });
 
@@ -597,11 +595,12 @@ export function useMultiplayerPhysics({
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup",   onKeyUp);
 
-    const ch = createGameChannel(match.channelId);
-    channelRef.current = ch;
+    // WebSocket bağlantısı kur (Supabase broadcast yerine — rate limit yok)
+    const conn = createRoomConnection(match.channelId, localUsername);
+    wsConnRef.current = conn;
 
     if (isHost) {
-      onPlayerInput(ch, inp => {
+      conn.on<PlayerInput>("player_input", inp => {
         if (grRef.current) {
           grRef.current.inputs[inp.username] = {
             dx: inp.dx, dy: inp.dy, shoot: inp.shoot, sprint: inp.sprint,
@@ -611,7 +610,7 @@ export function useMultiplayerPhysics({
     } else {
       // Client: host'tan gelen yetkili durumu tüm oyuncular için uygula (lokal dahil).
       // Bu, misafir oyuncunun host ekranında görünmemesi sorununu çözer.
-      onGameState(ch, state => {
+      conn.on<MPGameState>("game_state", state => {
         const g = grRef.current; if (!g) return;
         g.ball       = { ...state.ball };
         g.score      = { ...state.score };
@@ -636,13 +635,20 @@ export function useMultiplayerPhysics({
       });
     }
 
-    onForfeit(ch, payload => {
-      if (endFiredRef.current) return;
-      if (payload.leaverUsername === localUsername) return;
-      onOpponentForfeit?.(payload.leaverTeam, payload.currentScore);
-    });
+    // Forfeit dinle — mevcut WS bağlantısı üzerinden (güvenilir)
+    conn.on<{ leaverUsername: string; leaverTeam: Team; currentScore: { red: number; blue: number } }>(
+      "forfeit",
+      payload => {
+        if (endFiredRef.current) return;
+        if (payload.leaverUsername === localUsername) return;
+        onOpponentForfeit?.(payload.leaverTeam, payload.currentScore);
+      }
+    );
 
-    ch.subscribe();
+    // Sohbet mesajlarını dinle
+    conn.on<ChatMessage>("chat", msg => {
+      onChatReceived?.(msg);
+    });
 
     let lastTs = 0;
     const loop = (ts: number) => {
@@ -678,7 +684,7 @@ export function useMultiplayerPhysics({
             hasBallUsername: g.hasBall,
             goalCounts:      { ...g.goalCounts },
           };
-          broadcastGameState(ch, state);
+          conn.send("game_state", state);
         }
       } else {
         // Client: istemci-tarafı tahmin — yerel girdiyi anında uygula (60 FPS akıcı hareket).
@@ -699,7 +705,7 @@ export function useMultiplayerPhysics({
             username: localUsername, dx: curDx, dy: curDy,
             shoot, sprint, ts: now,
           };
-          broadcastInput(ch, inp);
+          conn.send("player_input", inp);
         }
       }
 
@@ -727,9 +733,24 @@ export function useMultiplayerPhysics({
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup",   onKeyUp);
-      ch.unsubscribe();
+      conn.close();
+      wsConnRef.current = null;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mevcut WS bağlantısı üzerinden forfeit gönder — yeni kanal oluşturmaya gerek yok
+  const sendForfeit = useCallback((leaverTeam: Team) => {
+    wsConnRef.current?.send("forfeit", {
+      leaverUsername: localUsername,
+      leaverTeam,
+      currentScore: scoreRef.current,
+    });
+  }, [localUsername, scoreRef]);
+
+  // Mevcut WS bağlantısı üzerinden sohbet mesajı gönder
+  const sendChat = useCallback((msg: ChatMessage) => {
+    wsConnRef.current?.send("chat", msg);
+  }, []);
 
   return {
     score:        hudScore,
@@ -737,5 +758,7 @@ export function useMultiplayerPhysics({
     phase:        hudPhase,
     lastGoalTeam: hudLastGoalTeam,
     scoreRef,
+    sendForfeit,
+    sendChat,
   };
 }

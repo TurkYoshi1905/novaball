@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send } from "lucide-react";
 import type { MatchSession, Score, ChatMessage, Team, MPResult } from "../types/game";
 import { CANVAS_WIDTH, CANVAS_HEIGHT, RANKED_DURATION_MS } from "../types/game";
-import { createGameChannel, broadcastChat, onChat, broadcastForfeit } from "../lib/realtime";
 import { useMultiplayerPhysics } from "../hooks/useMultiplayerPhysics";
 import MobileControls from "./MobileControls";
 import { createMobileInput } from "../types/game";
@@ -71,7 +70,6 @@ export default function MultiplayerBoard({
   const [inputText,  setInputText]  = useState("");
   const [goalFlash,  setGoalFlash]  = useState<Team | null>(null);
   const chatEndRef      = useRef<HTMLDivElement>(null);
-  const chatChannelRef  = useRef<ReturnType<typeof createGameChannel> | null>(null);
   const endHandledRef   = useRef(false);
 
   const myTeam: Team   = match.redTeam.some(m => m.username === localUsername) ? "red" : "blue";
@@ -83,16 +81,11 @@ export default function MultiplayerBoard({
     ...match.blueTeam.map(m => ({ ...m, team: "blue" as Team })),
   ];
 
-  // Sohbet kanalını kur
-  useState(() => {
-    const ch = createGameChannel(`${match.channelId}-chat`);
-    chatChannelRef.current = ch;
-    onChat(ch, msg => {
-      setMessages(prev => [...prev, msg]);
-      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
-    });
-    ch.subscribe();
-  });
+  // Sohbet mesajı geldiğinde
+  const handleChatReceived = useCallback((msg: ChatMessage) => {
+    setMessages(prev => [...prev, msg]);
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+  }, [chatEndRef]);
 
   // ─── Maç sonu ─────────────────────────────────────────────────────────────
   const finishGame = useCallback((
@@ -103,7 +96,6 @@ export default function MultiplayerBoard({
   ) => {
     if (endHandledRef.current) return;
     endHandledRef.current = true;
-    chatChannelRef.current?.unsubscribe();
 
     let winnerTeam: Team | "draw";
     if (forfeit && forfeitLeaverTeam) {
@@ -139,9 +131,10 @@ export default function MultiplayerBoard({
     finishGame(currentScore, {}, true, leaverTeam);
   }, [finishGame]);
 
-  const { score, gameTimeMs, phase, lastGoalTeam, scoreRef } = useMultiplayerPhysics({
+  const { score, gameTimeMs, phase, lastGoalTeam, scoreRef, sendForfeit, sendChat } = useMultiplayerPhysics({
     canvasRef, match, localUsername, isHost, ranked,
     mobileInputRef, onGameEnd: finishGame, onOpponentForfeit: handleOpponentForfeit,
+    onChatReceived: handleChatReceived,
   });
 
   // Gol flash — phase "goal_pause" olunca tetikle, "playing"'e dönnce temizle
@@ -155,12 +148,12 @@ export default function MultiplayerBoard({
 
   // ─── Sohbet ───────────────────────────────────────────────────────────────
   const sendMessage = () => {
-    if (!inputText.trim() || !chatChannelRef.current) return;
+    if (!inputText.trim()) return;
     const msg: ChatMessage = {
       id: crypto.randomUUID(), username: localUsername, displayName: localDisplayName,
       text: inputText.trim(), type: "user", ts: Date.now(),
     };
-    broadcastChat(chatChannelRef.current, msg);
+    sendChat(msg);
     setMessages(prev => [...prev, msg]);
     setInputText("");
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -173,15 +166,11 @@ export default function MultiplayerBoard({
       onLeave();
       return;
     }
-    // Rakibe forfeit bildir (ranked ve custom room için)
-    const ch = createGameChannel(match.channelId);
-    ch.subscribe(() => {
-      broadcastForfeit(ch, { leaverUsername: localUsername, leaverTeam: myTeam, currentScore: scoreRef.current });
-      setTimeout(() => ch.unsubscribe(), 500);
-    });
+    // Rakibe forfeit bildir — mevcut WS bağlantısı üzerinden (hemen gönderilir, async değil)
+    sendForfeit(myTeam);
     // Kendi sonuç ekranımızı göster (kaybeden olarak)
     finishGame(scoreRef.current, {}, true, myTeam);
-  }, [localUsername, myTeam, match.channelId, finishGame, scoreRef, onLeave]);
+  }, [sendForfeit, myTeam, finishGame, scoreRef, onLeave]);
 
   const timeDisplay = ranked ? fmtCountdown(gameTimeMs) : fmtCountup(gameTimeMs);
   const urgent      = ranked && gameTimeMs < 15_000;
