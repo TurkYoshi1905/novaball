@@ -409,24 +409,18 @@ export function useMultiplayerPhysics({
 
     // ── Saha ─────────────────────────────────────────────────────────────
     const fw = FIELD_RIGHT - FIELD_LEFT, fh = FIELD_BOTTOM - FIELD_TOP;
-    ctx.shadowColor = "rgba(30,180,80,.22)"; ctx.shadowBlur = 18;
     const fieldG = ctx.createLinearGradient(FIELD_LEFT, FIELD_TOP, FIELD_LEFT, FIELD_BOTTOM);
-    fieldG.addColorStop(0, "#163d22"); fieldG.addColorStop(0.5, "#1a4428"); fieldG.addColorStop(1, "#143820");
+    fieldG.addColorStop(0, "#0f2d1a"); fieldG.addColorStop(0.5, "#122e1b"); fieldG.addColorStop(1, "#0e2a18");
     ctx.fillStyle = fieldG;
-    ctx.beginPath(); ctx.roundRect?.(FIELD_LEFT, FIELD_TOP, fw, fh, 6) ?? ctx.rect(FIELD_LEFT, FIELD_TOP, fw, fh); ctx.fill();
-    ctx.shadowBlur = 0;
-    // Çizgili zemin — daha belirgin
+    ctx.beginPath(); ctx.roundRect?.(FIELD_LEFT, FIELD_TOP, fw, fh, 4) ?? ctx.rect(FIELD_LEFT, FIELD_TOP, fw, fh); ctx.fill();
+    // Çizgili zemin
     for (let i = 0; i < 8; i++) {
-      ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,.032)" : "rgba(0,0,0,.028)";
+      ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,.017)" : "rgba(0,0,0,.015)";
       ctx.fillRect(FIELD_LEFT, FIELD_TOP + (fh / 8) * i, fw, fh / 8);
     }
-    // Hafif kenar vignette
-    const vgr = ctx.createRadialGradient(FIELD_LEFT+fw/2, FIELD_TOP+fh/2, fh*.3, FIELD_LEFT+fw/2, FIELD_TOP+fh/2, fh*.75);
-    vgr.addColorStop(0, "transparent"); vgr.addColorStop(1, "rgba(0,0,0,.18)");
-    ctx.fillStyle = vgr; ctx.fillRect(FIELD_LEFT, FIELD_TOP, fw, fh);
 
     // ── Saha çizgileri ────────────────────────────────────────────────────
-    ctx.strokeStyle = "rgba(255,255,255,.6)"; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.rect(FIELD_LEFT, FIELD_TOP, fw, fh); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(CENTER_X, FIELD_TOP); ctx.lineTo(CENTER_X, FIELD_BOTTOM); ctx.stroke();
     ctx.beginPath(); ctx.arc(CENTER_X, CENTER_Y, 65, 0, Math.PI * 2); ctx.stroke();

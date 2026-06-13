@@ -485,21 +485,13 @@ function drawGame(ctx: CanvasRenderingContext2D, s: GR) {
 
 function drawField(ctx: CanvasRenderingContext2D) {
   const fw = FIELD_RIGHT - FIELD_LEFT, fh = FIELD_BOTTOM - FIELD_TOP;
-  // Çerçeve gölgesi
-  ctx.shadowColor = "rgba(30,180,80,.22)"; ctx.shadowBlur = 18;
   const g = ctx.createLinearGradient(FIELD_LEFT, FIELD_TOP, FIELD_LEFT, FIELD_BOTTOM);
-  g.addColorStop(0,"#163d22"); g.addColorStop(.5,"#1a4428"); g.addColorStop(1,"#143820");
-  ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(FIELD_LEFT, FIELD_TOP, fw, fh, 6); ctx.fill();
-  ctx.shadowBlur = 0;
-  // Çizgili zemin şeritleri — daha belirgin
+  g.addColorStop(0,"#0f2d1a"); g.addColorStop(.5,"#122e1b"); g.addColorStop(1,"#0e2a18");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(FIELD_LEFT, FIELD_TOP, fw, fh, 4); ctx.fill();
   for (let i = 0; i < 8; i++) {
-    ctx.fillStyle = i%2===0 ? "rgba(255,255,255,0.032)" : "rgba(0,0,0,0.028)";
+    ctx.fillStyle = i%2===0 ? "rgba(255,255,255,0.017)" : "rgba(0,0,0,0.015)";
     ctx.fillRect(FIELD_LEFT, FIELD_TOP+(fh/8)*i, fw, fh/8);
   }
-  // Hafif kenar vignette
-  const vg = ctx.createRadialGradient(FIELD_LEFT+fw/2, FIELD_TOP+fh/2, fh*.3, FIELD_LEFT+fw/2, FIELD_TOP+fh/2, fh*.75);
-  vg.addColorStop(0,"transparent"); vg.addColorStop(1,"rgba(0,0,0,.18)");
-  ctx.fillStyle = vg; ctx.fillRect(FIELD_LEFT, FIELD_TOP, fw, fh);
 }
 
 function drawGoals(ctx: CanvasRenderingContext2D) {
@@ -529,11 +521,11 @@ function drawGoals(ctx: CanvasRenderingContext2D) {
 }
 
 function drawFieldLines(ctx: CanvasRenderingContext2D) {
-  ctx.strokeStyle="rgba(255,255,255,.62)"; ctx.lineWidth=1.5;
+  ctx.strokeStyle="rgba(255,255,255,.55)"; ctx.lineWidth=1.5;
   ctx.beginPath(); ctx.rect(FIELD_LEFT,FIELD_TOP,FIELD_RIGHT-FIELD_LEFT,FIELD_BOTTOM-FIELD_TOP); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(CENTER_X,FIELD_TOP); ctx.lineTo(CENTER_X,FIELD_BOTTOM); ctx.stroke();
   ctx.beginPath(); ctx.arc(CENTER_X,CENTER_Y,65,0,Math.PI*2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(CENTER_X,CENTER_Y,4,0,Math.PI*2); ctx.fillStyle="rgba(255,255,255,.62)"; ctx.fill();
+  ctx.beginPath(); ctx.arc(CENTER_X,CENTER_Y,4,0,Math.PI*2); ctx.fillStyle="rgba(255,255,255,.55)"; ctx.fill();
   const pw=120, ph=200;
   ctx.beginPath(); ctx.rect(FIELD_LEFT,CENTER_Y-ph/2,pw,ph); ctx.stroke();
   ctx.beginPath(); ctx.rect(FIELD_RIGHT-pw,CENTER_Y-ph/2,pw,ph); ctx.stroke();

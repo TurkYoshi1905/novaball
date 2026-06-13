@@ -172,7 +172,7 @@
     flex-direction: column;
     background: #070d16;
     overflow: hidden;
-    position: relative;
+    position: relative; /* mobile-controls-bar absolute konumu için şart */
   }
 
   .portrait-overlay {
@@ -335,19 +335,19 @@
   ═══════════════════════════════════════════════════════════════════════════ */
 
   .mobile-controls-bar {
-    flex-shrink: 0;
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
     height: 130px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 20px 10px;
-    background: linear-gradient(to top, rgba(7,13,22,.92) 0%, rgba(7,13,22,.55) 100%);
-    border-top: 1px solid rgba(255,255,255,.08);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    padding: 8px 20px 14px;
+    background: transparent;
+    border-top: none;
     gap: 12px;
     user-select: none;
     -webkit-user-select: none;
+    z-index: 10;
   }
 
   .mobile-joystick-zone {
@@ -526,7 +526,10 @@
     .hud-score { font-size: 26px; }
     .hud-time { font-size: 15px; }
     .game-hud { height: 44px; padding: 0 10px; }
-    .game-canvas-zone { padding: 4px; }
+    /* Canvas zone tüm kalan yüksekliği kaplar — kontroller üste overlay olarak yerleşir */
+    .game-canvas-zone { padding: 0; }
+    .game-canvas-wrapper { max-width: 100%; height: 100%; aspect-ratio: unset; }
+    .game-canvas { border-radius: 0; border: none; }
   }
 
   @media (max-width: 480px) {
