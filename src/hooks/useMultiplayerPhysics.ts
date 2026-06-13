@@ -73,6 +73,7 @@ interface GR {
   goalPauseEnd: number;
   goalCounts:   Record<string, number>;
   lastGoalTeam: Team | null;
+  lastShooter:  string | null;         // en son şut atan oyuncu (hasBall null olsa bile gol sayımı için)
   // Top sahipliği (possession) sistemi
   hasBall:      string | null;         // possession sahibinin username'i
   facingX:      Record<string, number>; // bakış yönü
@@ -194,7 +195,7 @@ export function useMultiplayerPhysics({
       score: { red: 0, blue: 0 },
       gameTimeMs: ranked ? RANKED_DURATION_MS : 0,
       phase: "playing", goalPauseEnd: 0, goalCounts,
-      lastGoalTeam: null, hasBall: null,
+      lastGoalTeam: null, lastShooter: null, hasBall: null,
       facingX, facingY, kickCharge, kickCd, prevShoot, inputs,
       lastSync: 0, lastInputBc: 0,
       lastInput: { dx: 0, dy: 0, shoot: false, sprint: false },
@@ -262,11 +263,13 @@ export function useMultiplayerPhysics({
         } else if (gr.prevShoot[p.username] && (gr.kickCharge[p.username] ?? 0) > 0.02) {
           const power = MIN_KICK_POWER + (MAX_KICK_POWER - MIN_KICK_POWER) * (gr.kickCharge[p.username] ?? 0);
           if (gr.hasBall === p.username) {
-            // Sahip olarak bırakarak şut
+            // Sahip olarak bırakarak şut — lastShooter'ı hasBall null olmadan ÖNCE kaydet
+            gr.lastShooter = p.username;
             releaseKick(gr.facingX[p.username], gr.facingY[p.username], gr.ball, power);
             gr.hasBall = null;
           } else {
             // Serbest topa vur
+            gr.lastShooter = p.username;
             tryKick(p.x, p.y, p.vx, p.vy, gr.ball, power);
           }
           gr.kickCharge[p.username] = 0;
@@ -362,7 +365,10 @@ export function useMultiplayerPhysics({
         if (gr.ball.y >= GOAL_TOP && gr.ball.y <= GOAL_BOTTOM) {
           if (gr.ball.x < GOAL_LEFT_X) {
             gr.score.blue++; gr.lastGoalTeam = "blue";
-            if (gr.hasBall) gr.goalCounts[gr.hasBall] = (gr.goalCounts[gr.hasBall] ?? 0) + 1;
+            // lastShooter: hasBall null iken şut atıldığında da gol kredi verir
+            const scorer = gr.hasBall ?? gr.lastShooter;
+            if (scorer) gr.goalCounts[scorer] = (gr.goalCounts[scorer] ?? 0) + 1;
+            gr.lastShooter = null;
             gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
           }
         } else {
@@ -375,7 +381,9 @@ export function useMultiplayerPhysics({
         if (gr.ball.y >= GOAL_TOP && gr.ball.y <= GOAL_BOTTOM) {
           if (gr.ball.x > GOAL_RIGHT_X) {
             gr.score.red++; gr.lastGoalTeam = "red";
-            if (gr.hasBall) gr.goalCounts[gr.hasBall] = (gr.goalCounts[gr.hasBall] ?? 0) + 1;
+            const scorer = gr.hasBall ?? gr.lastShooter;
+            if (scorer) gr.goalCounts[scorer] = (gr.goalCounts[scorer] ?? 0) + 1;
+            gr.lastShooter = null;
             gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
           }
         } else {
@@ -669,14 +677,20 @@ export function useMultiplayerPhysics({
       onChatReceived?.(msg);
     });
 
+    // Tab arka plana alınıp geri gelince dt dev boyuta çıkıyor → lastTs sıfırla
+    const onVisChange = () => { if (!document.hidden) lastTs = 0; };
+    document.addEventListener("visibilitychange", onVisChange);
+
     let lastTs = 0;
     const loop = (ts: number) => {
       const g = grRef.current;
       if (!g) { rafRef.current = requestAnimationFrame(loop); return; }
       if (lastTs === 0) lastTs = ts;
-      const dt = ts - lastTs;
-      if (dt < FRAME_MS - 2) { rafRef.current = requestAnimationFrame(loop); return; }
+      const rawDt = ts - lastTs;
+      if (rawDt < FRAME_MS - 2) { rafRef.current = requestAnimationFrame(loop); return; }
       lastTs = ts;
+      // dt'yi sınırla: tab switch / browser throttle sonrası fizik patlaması önlenir
+      const dt = Math.min(rawDt, FRAME_MS * 4); // max ~67ms
 
       // Lokal girdi oku
       const keys = keysRef.current;
@@ -756,6 +770,7 @@ export function useMultiplayerPhysics({
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup",   onKeyUp);
+      document.removeEventListener("visibilitychange", onVisChange);
       conn.close();
       wsConnRef.current = null;
     };
