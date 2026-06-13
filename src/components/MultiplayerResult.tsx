@@ -17,37 +17,17 @@ export default function MultiplayerResult({ result, onMenu, onPlayAgain }: Props
   const {
     winnerTeam, redGoals, blueGoals,
     myTeam, rpGained, prevRP, newRP,
-    playerStats, mode, isRanked, forfeit,
+    playerStats, mode, isRanked, forfeit, localUsername,
   } = result;
 
-  const didWin = winnerTeam === myTeam;
-  const isDraw = winnerTeam === "draw";
-  const myRank   = getRankForRP(newRP);
-  const prevRank = getRankForRP(prevRP);
-  const rankUp   = isRanked && newRP > prevRP && myRank.fullName !== prevRank.fullName;
+  const didWin    = winnerTeam === myTeam;
+  const isDraw    = winnerTeam === "draw";
+  const myRank    = getRankForRP(newRP);
+  const prevRank  = getRankForRP(prevRP);
+  const rankUp    = isRanked && newRP > prevRP && myRank.fullName !== prevRank.fullName;
   const teamColor = TEAM_COLOR[myTeam];
 
-  // Sıralama: kazananlar önce, kendi takımı vurgulu, gol sayısına göre
-  const sorted = [...playerStats].sort((a, b) => {
-    const aWin = winnerTeam !== "draw" && a.username === result.playerStats.find(p => p.username === a.username)?.username;
-    const bWin = winnerTeam !== "draw" && b.username === result.playerStats.find(p => p.username === b.username)?.username;
-    void aWin; void bWin;
-    // Kazanan takım önce
-    const aIsWinner = winnerTeam !== "draw" && playerStats.indexOf(a) < playerStats.length; // placeholder — real sort below
-    void aIsWinner;
-    const aTeam: Team = result.myTeam === "red"
-      ? (result.playerStats.indexOf(a) < result.playerStats.filter(p => {
-          // determine team by rpGained pattern — winners have rpGained >= 0, but losers also 0
-          // Better: use the order from match (red team comes first in allPlayers)
-          return true;
-        }).length ? "red" : "blue")
-      : "red";
-    void aTeam;
-    if (b.rpGained !== a.rpGained) return b.rpGained - a.rpGained;
-    return b.goals - a.goals;
-  });
-
-  // Aslında daha temiz sıralama: RP'ye göre (kazananlar > 0, kaybedenler = 0), sonra gol
+  // Temiz sıralama: RP'ye göre (kazananlar > 0, beraberlikte eşit), sonra gol sayısı
   const cleanSorted = [...playerStats].sort((a, b) => {
     if (b.rpGained !== a.rpGained) return b.rpGained - a.rpGained;
     return b.goals - a.goals;
@@ -157,20 +137,11 @@ export default function MultiplayerResult({ result, onMenu, onPlayAgain }: Props
 
           <div className="flex flex-col gap-1.5">
             {cleanSorted.map((p, idx) => {
-              const isMe = p.username === result.playerStats.find(s => s.username === p.username && p.rpGained === rpGained && p.rpGained > 0)?.username
-                || (idx === 0 && didWin && !isRanked);
-              // Daha basit: my username karşılaştırması için result'tan al
-              // result içinde localUsername yok ama myTeam var
-              const isWinner = p.rpGained > 0 || (winnerTeam === "draw");
+              const isMe     = p.username === localUsername;
+              const isWinner = !isDraw && p.rpGained > 0;
               const isMvp    = p.goals > 0 && p.username === topScorer?.username && topScorer.goals > 0;
               const medal    = MEDALS[idx] ?? `${idx + 1}.`;
-              // Takım rengi belirsiz — RP'ye göre tahmin et (kazananlar veya eşit dağıtım)
-              // Aslında tüm oyuncuların takımı MPResult'da yok; playerStats sadece username/displayName/goals/rpGained
-              // Renk olarak: winners → takım rengi, draw → beyaz/gri, losers → kırmızı/mavi (bilinmiyor)
-              // Güvenli: RP > 0 ise kazanan (winnerTeam rengi), = 0 ise kaybedenler veya draw
-              const rowColor = isWinner && !isDraw && p.rpGained > 0
-                ? TEAM_COLOR[winnerTeam as Team]
-                : "rgba(255,255,255,0.12)";
+              const winColor = isWinner ? TEAM_COLOR[winnerTeam as Team] : undefined;
 
               return (
                 <motion.div
@@ -180,12 +151,12 @@ export default function MultiplayerResult({ result, onMenu, onPlayAgain }: Props
                   transition={{ delay: 0.25 + idx * 0.06 }}
                   className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl border transition-all"
                   style={{
-                    background: p.rpGained > 0 && !isDraw
-                      ? `${TEAM_COLOR[winnerTeam as Team]}08`
-                      : "rgba(255,255,255,0.03)",
-                    borderColor: p.rpGained > 0 && !isDraw
-                      ? `${TEAM_COLOR[winnerTeam as Team]}22`
-                      : "rgba(255,255,255,0.07)",
+                    background: isMe
+                      ? (isWinner ? `${winColor}12` : "rgba(255,255,255,0.06)")
+                      : (isWinner ? `${winColor}06` : "rgba(255,255,255,0.02)"),
+                    borderColor: isMe
+                      ? (isWinner ? `${winColor}40` : "rgba(255,255,255,0.18)")
+                      : (isWinner ? `${winColor}18` : "rgba(255,255,255,0.06)"),
                   }}
                 >
                   {/* Sıra / Madalya */}
@@ -197,21 +168,24 @@ export default function MultiplayerResult({ result, onMenu, onPlayAgain }: Props
                   <div className="flex items-center gap-1.5 flex-1 min-w-0">
                     <span
                       className="text-sm font-bold truncate"
-                      style={{ color: p.rpGained > 0 && !isDraw ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.45)" }}
+                      style={{
+                        color: isMe ? "rgba(255,255,255,1)" : (isWinner ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.38)"),
+                      }}
                     >
                       {p.displayName}
+                      {isMe && <span className="ml-1 text-[10px] text-white/30 font-normal">(sen)</span>}
                     </span>
                     {isMvp && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#facc15]/15 border border-[#facc15]/25 text-[#facc15] font-bold flex-shrink-0">
                         ⭐ MVP
                       </span>
                     )}
-                    {isWinner && !isDraw && p.rpGained > 0 && (
+                    {isWinner && (
                       <span
                         className="text-[10px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
                         style={{
-                          color: TEAM_COLOR[winnerTeam as Team],
-                          background: `${TEAM_COLOR[winnerTeam as Team]}15`,
+                          color: winColor,
+                          background: `${winColor}18`,
                         }}
                       >
                         WIN

@@ -127,6 +127,8 @@ export default function MultiplayerBoard({
       prevRankName: getRankForRP(prevRP).fullName,
       newRankName:  getRankForRP(newRP).fullName,
       playerStats: stats, forfeit,
+      localUsername,
+      opponentUsername: opponents[0]?.username ?? "",
     });
   }, [myTeam, ranked, localUsername, onMatchEnd, allPlayers, match.mode]); // eslint-disable-line
 
@@ -161,17 +163,22 @@ export default function MultiplayerBoard({
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   };
 
-  // ─── Ayrıl (ranked maçta forfeit yayınla) ────────────────────────────────
+  // ─── Ayrıl: forfeit yayınla + sonuç ekranı göster (her iki oyuncuya da) ───
   const handleLeave = useCallback(() => {
-    if (ranked && phase !== "finished" && !endHandledRef.current) {
-      const ch = createGameChannel(match.channelId);
-      ch.subscribe(() => {
-        broadcastForfeit(ch, { leaverUsername: localUsername, leaverTeam: myTeam, currentScore: scoreRef.current });
-        setTimeout(() => ch.unsubscribe(), 500);
-      });
+    // Maç zaten bitti ya da işlendi — sadece menüye dön
+    if (endHandledRef.current) {
+      onLeave();
+      return;
     }
-    onLeave();
-  }, [ranked, phase, localUsername, myTeam, match.channelId, onLeave]);
+    // Rakibe forfeit bildir (ranked ve custom room için)
+    const ch = createGameChannel(match.channelId);
+    ch.subscribe(() => {
+      broadcastForfeit(ch, { leaverUsername: localUsername, leaverTeam: myTeam, currentScore: scoreRef.current });
+      setTimeout(() => ch.unsubscribe(), 500);
+    });
+    // Kendi sonuç ekranımızı göster (kaybeden olarak)
+    finishGame(scoreRef.current, {}, true, myTeam);
+  }, [localUsername, myTeam, match.channelId, finishGame, scoreRef, onLeave]);
 
   const timeDisplay = ranked ? fmtCountdown(gameTimeMs) : fmtCountup(gameTimeMs);
   const urgent      = ranked && gameTimeMs < 15_000;

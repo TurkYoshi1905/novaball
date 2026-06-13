@@ -205,18 +205,20 @@ export interface CustomRoom {
 }
 
 export interface MPResult {
-  mode:         GameMode;
-  isRanked:     boolean;
-  winnerTeam:   Team | "draw";
-  redGoals:     number;
-  blueGoals:    number;
-  myTeam:       Team;
-  rpGained:     number;
-  prevRP:       number;
-  newRP:        number;
-  rankChanged:  boolean;
-  prevRankName: string;
-  newRankName:  string;
-  playerStats:  Array<{ username: string; displayName: string; goals: number; rpGained: number }>;
-  forfeit:      boolean;
+  mode:             GameMode;
+  isRanked:         boolean;
+  winnerTeam:       Team | "draw";
+  redGoals:         number;
+  blueGoals:        number;
+  myTeam:           Team;
+  rpGained:         number;
+  prevRP:           number;
+  newRP:            number;
+  rankChanged:      boolean;
+  prevRankName:     string;
+  newRankName:      string;
+  playerStats:      Array<{ username: string; displayName: string; goals: number; rpGained: number }>;
+  forfeit:          boolean;
+  localUsername:    string;
+  opponentUsername: string;
 }

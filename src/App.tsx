@@ -205,6 +205,22 @@ export default function App() {
     setCurrentMatch(null);
     setCurrentRoom(null);
     setScreen("mp-result");
+
+    // Maç sonucunu Supabase'e kaydet
+    const { winnerTeam, myTeam, redGoals, blueGoals, rpGained, isRanked,
+            prevRP, newRP, localUsername: lUser, opponentUsername, playerStats } = result;
+    const myGoals  = myTeam === "red" ? redGoals  : blueGoals;
+    const oppGoals = myTeam === "red" ? blueGoals : redGoals;
+    const outcome: "win" | "loss" | "draw" =
+      winnerTeam === "draw" ? "draw" : winnerTeam === myTeam ? "win" : "loss";
+    const oppDisplay = playerStats.find(p => p.username !== lUser)?.displayName
+      || opponentUsername || "Rakip";
+    saveMatch({
+      username: lUser, opponentName: oppDisplay,
+      playerGoals: myGoals, opponentGoals: oppGoals,
+      result: outcome, rpGained, rpBefore: prevRP, rpAfter: newRP,
+      ranked: isRanked,
+    }).catch(() => {});
   }, []);
 
   // ─── Screen render ─────────────────────────────────────────────────────────
