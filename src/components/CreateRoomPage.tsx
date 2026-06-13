@@ -23,7 +23,7 @@ export default function CreateRoomPage({ username, displayName, onRoomCreated, o
     setLoading(true);
     setError("");
     // Özel odalar her zaman serbest (ranked değil, RP yok)
-    const { room, error: err } = await createRoom(name.trim(), username, displayName, maxPlayers, false);
+    const { room, error: err } = await createRoom(name.trim(), username, displayName, maxPlayers);
     setLoading(false);
     if (err || !room) { setError(err ?? "Oda oluşturulamadı"); return; }
     onRoomCreated(room);

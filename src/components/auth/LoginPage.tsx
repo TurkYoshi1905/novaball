@@ -5,9 +5,10 @@ import { findEmailByUsername } from "../../lib/db";
 
 interface Props {
   onGoRegister: () => void;
+  onGoForgot:   () => void;
 }
 
-export default function LoginPage({ onGoRegister }: Props) {
+export default function LoginPage({ onGoRegister, onGoForgot }: Props) {
   const [username, setUsername] = useState("");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
@@ -120,7 +121,16 @@ export default function LoginPage({ onGoRegister }: Props) {
 
           {/* Şifre */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Şifre</label>
+            <div className="flex items-center justify-between">
+              <label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Şifre</label>
+              <button
+                type="button"
+                onClick={onGoForgot}
+                className="text-[#4af]/70 text-xs hover:text-[#4af] transition-colors"
+              >
+                Şifremi Unuttum
+              </button>
+            </div>
             <div className="relative">
               <input
                 type={showPass ? "text" : "password"}

@@ -102,6 +102,7 @@ export interface MatchResultData {
 
 export type AppScreen =
   | "login" | "register" | "email-verify"
+  | "forgot-password" | "reset-password"
   | "menu" | "rankpage" | "changelog"
   | "playing" | "ranked" | "result"
   | "leaderboard" | "profile"

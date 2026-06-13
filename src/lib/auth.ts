@@ -28,6 +28,16 @@ export async function resendVerification(email: string) {
   return supabase.auth.resend({ type: "signup", email });
 }
 
+export async function resetPassword(email: string) {
+  return supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin,
+  });
+}
+
+export async function updatePassword(newPassword: string) {
+  return supabase.auth.updateUser({ password: newPassword });
+}
+
 export async function getSession() {
   const { data } = await supabase.auth.getSession();
   return data.session;

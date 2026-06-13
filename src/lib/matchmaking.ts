@@ -147,7 +147,7 @@ function rowToRoom(data: Record<string, unknown>): CustomRoom {
     status:       data.status as RoomStatus,
     channelId:    data.channel_id as string,
     createdAt:    data.created_at as string,
-    ranked:       (data.ranked as boolean) ?? false,
+    ranked:       false,
   };
 }
 
@@ -155,8 +155,7 @@ export async function createRoom(
   name: string,
   hostUsername: string,
   hostDisplayName: string,
-  maxPlayers: number,
-  ranked = false
+  maxPlayers: number
 ): Promise<{ room: CustomRoom | null; error: string | null }> {
   const id = uuid();
   const { data, error } = await supabase
@@ -170,7 +169,6 @@ export async function createRoom(
       blue_team: [],
       status: "waiting",
       channel_id: `room-${id}`,
-      ranked,
     })
     .select()
     .single();

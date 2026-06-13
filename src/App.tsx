@@ -4,6 +4,8 @@ import { signOut } from "./lib/auth";
 import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
 import EmailVerifyPage from "./components/auth/EmailVerifyPage";
+import ForgotPasswordPage from "./components/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./components/auth/ResetPasswordPage";
 import MainMenu from "./components/MainMenu";
 import GameBoard from "./components/GameBoard";
 import RankPage from "./components/RankPage";
@@ -81,6 +83,7 @@ export default function App() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "PASSWORD_RECOVERY") { setScreen("reset-password"); return; }
       if (event === "SIGNED_OUT" || !session) { setScreen("login"); return; }
       if (!session.user.email_confirmed_at) {
         setPendingEmail(session.user.email ?? "");
@@ -171,14 +174,16 @@ export default function App() {
     );
   }
 
-  if (screen === "login")        return <LoginPage onGoRegister={() => setScreen("register")} />;
+  if (screen === "login")        return <LoginPage onGoRegister={() => setScreen("register")} onGoForgot={() => setScreen("forgot-password")} />;
   if (screen === "register")     return (
     <RegisterPage
       onSuccess={(email) => { setPendingEmail(email); setScreen("email-verify"); }}
       onGoLogin={() => setScreen("login")}
     />
   );
-  if (screen === "email-verify") return <EmailVerifyPage email={pendingEmail} onGoLogin={() => setScreen("login")} />;
+  if (screen === "email-verify")   return <EmailVerifyPage email={pendingEmail} onGoLogin={() => setScreen("login")} />;
+  if (screen === "forgot-password") return <ForgotPasswordPage onBack={() => setScreen("login")} />;
+  if (screen === "reset-password")  return <ResetPasswordPage onDone={() => setScreen("menu")} />;
 
   if (screen === "menu") {
     return (
