@@ -17,8 +17,11 @@ import type { MPPlayer, MPGameState, PlayerInput, MatchSession, ChatMessage } fr
 import { createRoomConnection, type RoomConnection } from "../lib/wsSync";
 
 const FRAME_MS      = 1000 / 60;
-const SYNC_MS       = 33;   // Host ~30fps durum yayını (WebSocket — rate limit yok)
-const INPUT_MS      = 16;   // Client ~60fps girdi yayını (WebSocket — rate limit yok)
+// Adaptif sync hızları: WebSocket rate limit yoktur; Supabase fallback'te daha yavaş gönderim
+const SYNC_MS_WS    = 33;   // Host ~30fps durum yayını (WebSocket)
+const SYNC_MS_SB    = 80;   // Host ~12fps durum yayını (Supabase fallback — 429 koruması)
+const INPUT_MS_WS   = 16;   // Client ~60fps girdi yayını (WebSocket)
+const INPUT_MS_SB   = 50;   // Client ~20fps girdi yayını (Supabase fallback)
 const INPUT_HBEAT   = 200;  // Delta değişmese bile 5fps heartbeat gönder
 
 const CENTER_X = CANVAS_WIDTH / 2;
@@ -553,9 +556,9 @@ export function useMultiplayerPhysics({
         }
       }
 
-      // ── Şut şarj arkı (sadece local veya host ise tüm oyuncular) ──────
+      // ── Şut şarj arkı — tüm oyunculara görünür (host, kickCharge'ı game_state'de yayınlar) ──
       const charge = gr.kickCharge[p.username] ?? 0;
-      if (charge > 0.01 && (isLocal || isHost)) {
+      if (charge > 0.01) {
         const r2      = PLAYER_RADIUS + 9;
         const startA  = -Math.PI / 2;
         const endA    = startA + charge * Math.PI * 2;
@@ -623,13 +626,29 @@ export function useMultiplayerPhysics({
         } else if (g.phase !== "finished") {
           g.phase = state.phase === "goal_pause" ? "goal_pause" : "playing";
         }
-        // Tüm oyuncuları güncelle — lokal oyuncu dahil (host yetkili kaynaktır).
+        // Tüm oyuncuları güncelle — lerp ile yumuşak reconciliation (60fps jitter önleme).
         for (const sp of state.players) {
           const lp = g.players.find(p => p.username === sp.username);
-          if (lp) {
-            lp.x = sp.x; lp.y = sp.y; lp.vx = sp.vx; lp.vy = sp.vy;
-            lp.stamina = sp.stamina; lp.kickCharge = sp.kickCharge;
-            g.kickCharge[sp.username] = sp.kickCharge;
+          if (!lp) continue;
+          lp.stamina    = sp.stamina;
+          lp.kickCharge = sp.kickCharge;
+          g.kickCharge[sp.username] = sp.kickCharge;
+          if (sp.username === localUsername) {
+            // Lokal oyuncu: büyük tahmin hatalarını kademeli düzelt, küçükleri yoksay
+            const errX = sp.x - lp.x, errY = sp.y - lp.y;
+            const err  = Math.sqrt(errX * errX + errY * errY);
+            if (err > 60) {
+              lp.x = sp.x; lp.y = sp.y;                  // büyük sapma → snap
+            } else if (err > 6) {
+              lp.x += errX * 0.15; lp.y += errY * 0.15;  // küçük sapma → yumuşak düzeltme
+            }
+            // Hızı her zaman host'tan al (fizik tutarlılığı)
+            lp.vx = sp.vx; lp.vy = sp.vy;
+          } else {
+            // Uzak oyuncular: %30 lerp → pürüzsüz interpolasyon
+            lp.x  += (sp.x  - lp.x)  * 0.30;
+            lp.y  += (sp.y  - lp.y)  * 0.30;
+            lp.vx  = sp.vx; lp.vy = sp.vy;
           }
         }
       });
@@ -668,11 +687,15 @@ export function useMultiplayerPhysics({
       const sprint = keys.has("ShiftLeft") || keys.has("ShiftRight") || (mob?.sprint ?? false);
       g.inputs[localUsername] = { dx: clamp(dx, -1, 1), dy: clamp(dy, -1, 1), shoot, sprint };
 
+      // Transport tipine göre sync aralığını belirle (429 koruması)
+      const syncMs  = conn.isWebSocket ? SYNC_MS_WS  : SYNC_MS_SB;
+      const inputMs = conn.isWebSocket ? INPUT_MS_WS : INPUT_MS_SB;
+
       if (isHost) {
         // Host: fiziği çalıştır ve durumu yayınla
         physicsStep(g, dt);
         const now = Date.now();
-        if (now - g.lastSync >= SYNC_MS) {
+        if (now - g.lastSync >= syncMs) {
           g.lastSync = now;
           const state: MPGameState = {
             players:         g.players.map(p => ({ ...p })),
@@ -688,7 +711,7 @@ export function useMultiplayerPhysics({
         }
       } else {
         // Client: istemci-tarafı tahmin — yerel girdiyi anında uygula (60 FPS akıcı hareket).
-        // Host durumu geldiğinde tüm konumlar üzerine yazılır (reconciliation).
+        // Host durumu geldiğinde lerp ile yumuşak reconciliation uygulanır.
         physicsStep(g, dt);
         const now = Date.now();
         const curDx = clamp(g.inputs[localUsername]?.dx ?? 0, -1, 1);
@@ -698,7 +721,7 @@ export function useMultiplayerPhysics({
         const inputChanged = last.dx !== curDx || last.dy !== curDy ||
                              last.shoot !== shoot || last.sprint !== sprint;
         const heartbeat    = now - g.lastInputBc >= INPUT_HBEAT;
-        if ((inputChanged && now - g.lastInputBc >= INPUT_MS) || heartbeat) {
+        if ((inputChanged && now - g.lastInputBc >= inputMs) || heartbeat) {
           g.lastInputBc = now;
           g.lastInput   = { dx: curDx, dy: curDy, shoot, sprint };
           const inp: PlayerInput = {

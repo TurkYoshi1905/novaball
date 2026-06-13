@@ -17,10 +17,10 @@ export const BALL_RADIUS = 13;
 
 export const PLAYER_ACCEL = 0.58;
 export const PLAYER_MAX_SPEED = 4.8;
-export const PLAYER_FRICTION = 0.86;
+export const PLAYER_FRICTION = 0.84;
 
-export const BALL_FRICTION = 0.980;
-export const BALL_RESTITUTION = 0.72;
+export const BALL_FRICTION = 0.983;
+export const BALL_RESTITUTION = 0.76;
 export const KICK_POWER = 14;          // AI ve direkt çarpışma için
 export const KICK_RANGE = 58;
 

@@ -185,6 +185,9 @@ class RoomConnection {
     return this;
   }
 
+  /** Aktif transport tipini döner — host/client sync hızını uyarlamak için kullanılır */
+  get isWebSocket(): boolean { return this.transport === "ws"; }
+
   /** Bağlantıyı tamamen kapat */
   close(): void {
     this.closed = true;

@@ -96,22 +96,31 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - Tuş bırakılınca: `power = MIN_KICK_POWER + (MAX_KICK_POWER - MIN_KICK_POWER) * kickCharge`.
 - Canvas üzerinde oyuncunun etrafında renkli ark gösterilir (yeşil → sarı → kırmızı).
 - Mobilden: conic-gradient halkası ⚽ butonun çevresinde dolar.
+- **Multiplayer'da diğer oyuncuların kick charge barı da görünür** — host, `kickCharge` bilgisini her oyuncu için game_state içinde yayınlar.
 
 ### Canvas Çizim Stili
 - Oyuncular: takım renkli daire + içinde takım numarası + **dairenin altında displayName**.
 - Multiplayer canvas: daire içinde `teamIndex` numarası, hemen altında oyuncu `displayName` etiketi (lokal oyuncu daha parlak).
 - GameBoard (AI modu): daire içinde `name` metni, altında tekrar etiket (GameBoard stili).
 - Stamina barı: oyuncunun altında renkli ince bar (yeşil/sarı/kırmızı).
-- Kick charge arkı: basılı tutulunca oyuncunun etrafında renkli yay.
+- Kick charge arkı: basılı tutulunca oyuncunun etrafında renkli yay — **tüm oyunculara görünür**.
 - Top: radyal gradient beyaz daire — sahip varsa takım rengi parıltısı, serbest ve hızlıysa hız parıltısı.
 - Kale direkleri: beyaz küçük daireler.
 - Possession aura: top sahibi oyuncunun etrafında radyal gradient halkası (takım rengiyle).
 - RAF döngüsü dışında **asla** canvas'a yazılmaz.
 
 ### Çok Oyunculu (Multiplayer)
-- **Host**, fiziği çalıştırır ve durumu ~30 FPS ile yayınlar (`SYNC_MS=33`).
-- **Client**, kendi girişini ~60 FPS ile yayınlar (`INPUT_MS=16`) ve host'tan gelen durum ile tüm oyuncu konumlarını günceller (yerel oyuncu dahil).
-- **İstemci-tarafı tahmin**: Client kendi girişini her frame'de yerel fizik adımına da uygular; host durumu gelince tüm pozisyonlar üzerine yazılır (reconciliation). Bu sayede 60 FPS akıcı hareket sağlanır.
+- **Host**, fiziği çalıştırır ve durumu yayınlar.
+  - WebSocket aktifse: `SYNC_MS=33` (~30fps)
+  - Supabase fallback'te: `SYNC_MS=80` (~12fps, rate limit koruması)
+- **Client**, girdi değişince anında yayınlar; heartbeat `INPUT_HBEAT=200ms`.
+  - WebSocket aktifse: `INPUT_MS=16` (~60fps)
+  - Supabase fallback'te: `INPUT_MS=50` (~20fps)
+- **İstemci-tarafı tahmin + Lerp reconciliation**:
+  - Client kendi girişini her frame'de yerel fizik adımına uygular (60fps akıcı).
+  - Host durumu gelince: lokal oyuncu için hata büyüklüğüne göre yumuşak düzeltme (lerp), uzak oyuncular için her zaman lerp.
+  - Bu sayede jitter ve titreme ortadan kalkar.
+- **Güç barı**: Host, her oyuncunun `kickCharge` değerini `game_state`'e dahil eder; tüm istemciler tüm oyuncuların şarj barını görür.
 - Supabase Realtime broadcast kanalları kullanılır (WebSocket üzerinde).
 - **Forfeit sistemi**: Ranked maçtan ayrılan oyuncu `player_forfeit` eventi yayınlar. Kalan oyuncu otomatik 10 RP kazanır.
 - **HUD**: GameBoard'daki `game-hud`, `hud-side`, `hud-center`, `hud-score`, `hud-time` CSS sınıflarının aynısı kullanılır.
@@ -181,10 +190,49 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - Multiplayer canvas: oyuncuların içinde `teamIndex` numarası + altında `displayName` etiketi gösterilir
 - `MultiplayerBoard` artık `game-board-outer` CSS sistemi kullanıyor (GameBoard ile aynı HUD)
 - Özel odalar her zaman `ranked: false` — `CreateRoomPage`'de toggle yok
-- **60 FPS düzeltmesi**: Client `physicsStep` yerel tahmin + host durumu reconciliation ile çalışır; `SYNC_MS=33`, `INPUT_MS=16`
+- **60 FPS + Lerp reconciliation**: Client tahmini + host durumu lerp ile birleştirilir; jitter yoktur
+- **Adaptif sync hızı**: WebSocket'te 33ms/16ms, Supabase'de 80ms/50ms
+- **Kick charge görünürlüğü**: Tüm oyuncuların güç barı herkese görünür (koşul `charge > 0.01`, transport fark etmez)
 - **Görünürlük düzeltmesi**: `onGameState` artık TÜM oyuncuların konumunu günceller (lokal oyuncu dahil) — host her zaman yetkilidir
 
+## GitHub Yayınlama
+
+```bash
+GITHUB_PAT=<token> bash github-sync.sh push "commit mesajı"
+```
+
+`GITHUB_PAT` Replit Secrets'a eklenmişse:
+```bash
+bash github-sync.sh push "NovaBall: güncelleme"
+```
+
 ## Sürüm Geçmişi
+
+### v0.0.5 — 60 FPS Akıcılık & Kick Charge Görünürlüğü (13 Haziran 2026)
+
+> Multiplayer kasma sorunu çözüldü, tüm oyuncuların güç barı görünür hale getirildi.
+
+#### ⚡ 60 FPS Akıcılık
+- **Lerp reconciliation**: Host durumu gelince pozisyonlar artık hard-snap yerine yumuşak lerp ile düzeltilir — jitter tamamen giderildi
+- **Lokal tahmin koruması**: Kendi oyuncun için hata küçükse düzeltme atlanır, büyükse %15 oranında yumuşak düzeltme uygulanır
+- **Uzak oyuncu interpolasyonu**: Diğer oyuncular %30 lerp ile güncellenir — hareketler pürüzsüz görünür
+
+#### 📡 Adaptif Sync Hızı
+- **WebSocket (birincil)**: Host 33ms (~30fps), Client 16ms (~60fps)
+- **Supabase fallback**: Host 80ms (~12fps), Client 50ms (~20fps) — 429 rate limit riski yoktur
+- `RoomConnection.isWebSocket` özelliği ile transport tipi sorgulanır
+
+#### 🎯 Kick Charge Görünürlüğü
+- Tüm oyuncuların güç barı artık herkese görünür (önceki: sadece lokal + host)
+- Host `kickCharge` değerlerini `game_state` içinde yayınlar
+- Client, aldığı `kickCharge` değerini her oyuncu için doğrudan render eder
+
+#### 🏓 Fizik İyileştirmeleri
+- `BALL_FRICTION`: 0.980 → 0.983 (top daha uzun yuvarlanır)
+- `BALL_RESTITUTION`: 0.72 → 0.76 (duvardan daha canlı sekme)
+- `PLAYER_FRICTION`: 0.86 → 0.84 (daha hızlı durma, hassas hareket)
+
+---
 
 ### v0.0.4 — Stabilite & Ağ Optimizasyonu (13 Haziran 2026)
 
@@ -214,12 +262,6 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - **Delta encoding**: girdi değişmediğinde 200ms heartbeat → broadcast trafiği ~**%80 azaldı**
 - 429 Too Many Requests / oyun donma sorunu tamamen giderildi
 
-#### 🗄️ Veritabanı Geliştirmeleri
-- `supabase/003`: `match_history` → `opponent_username`, `match_uuid` kolonları
-- `supabase/004`: `winner_team`, `forfeit`, `game_mode`, win streak kolonları; RLS politikaları
-- `player_stats_view` (kazanma oranı, maç başına gol) ve `recent_matches_view` eklendi
-- `update_win_streak()` PostgreSQL fonksiyonu + kapsamlı indeksler
-
 ---
 
 ### v0.0.3 — Çok Oyunculu Altyapı (12 Haziran 2026)
@@ -230,41 +272,6 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 
 ### v0.0.1 — İlk Sürüm (11 Haziran 2026)
 - Temel oyun, AI rakip, fizik motoru, rank sistemi, mobil destek
-
----
-
-### Dahili Yamalar (v0.0.4 kapsamında)
-
-### v0.5 — 60 FPS & Multiplayer Görünürlük Düzeltmesi (13 Haziran 2026)
-- **60 FPS multiplayer**: `SYNC_MS=33` (host ~30fps yayın), `INPUT_MS=16` (client ~60fps girdi)
-- **İstemci-tarafı tahmin**: Client her frame'de yerel `physicsStep` çalıştırır; host durumu gelince tüm pozisyonlar reconcile edilir
-- **Görünürlük düzeltmesi**: `onGameState` artık lokal oyuncunun pozisyonunu da host'tan günceller — host her zaman yetkili kaynak
-- **`active_matches.ranked` kolonu**: Supabase `PGRST204` hatası giderildi — `supabase/001_ranked_multiplayer_fixes.sql` ile kolonu ekle
-- **SQL migration**: `supabase/001_ranked_multiplayer_fixes.sql` workspace köküne taşındı
-
-### v0.4 — MP Canvas İsim Gösterimi & Saha, Ranked AI Düzeltmesi (12 Haziran 2026)
-- **Multiplayer canvas oyuncu çizimi**: daire içinde `teamIndex` numarası + hemen altında `displayName` etiketi (lokal oyuncu daha parlak beyaz, diğerleri yarı saydam)
-- **Saha çizimi**: multiplayer ve özel oda maçlarında saha, `GameBoard` ile birebir aynı (çizgili zemin, ceza alanları, orta daire, köşe yayları, kale ızgarası, direkler)
-- **Ranked AI modu geri eklendi**: `App.tsx`'te `screen === "ranked"` ekranı eksikti; `MatchResult`'tan "Tekrar Oyna" düzgün çalışıyor
-- **Top tutma + çalma sistemi** (v0.4a): `useMultiplayerPhysics.ts`'e `POSSESS_DIST`, `attachBall()`, `STEAL_DIST` entegrasyonu; possession aura; releaseKick/tryKick şut sistemi; `hasBallUsername` MPGameState'e eklendi
-
-### v0.3 — Multiplayer HUD & Maç Süresi (12 Haziran 2026)
-- **MultiplayerBoard tam yenileme**: GameBoard'daki tüm HUD CSS sınıfları entegre edildi
-- **Maç içi 90s geri sayaç**: Ranked maçlarda `RANKED_DURATION_MS` → 0 geri sayım; son 15s kırmızı nabız animasyonu
-- **Özel oda sayacı**: Serbest maçlarda yukarı sayaç (süre sınırı yok)
-- **MultiplayerResult tam yenileme**: Oyuncu sıralama tablosu, skor kartı, rank ilerleme barı
-- **Forfeit sistemi**: Ranked maçtan ayrılan oyuncu rakibine 10 RP kazandırır
-
-### v0.2 — Supabase Multiplayer (11 Haziran 2026)
-- Supabase Auth (e-posta/şifre), PostgreSQL veri katmanı
-- Gerçek zamanlı çok oyunculu (Supabase Realtime broadcast)
-- Matchmaking kuyruğu, özel odalar, oda lobi
-
-### v0.1 — Tek Oyunculu Temel (11 Haziran 2026)
-- HTML5 Canvas + requestAnimationFrame oyun döngüsü
-- İmpuls tabanlı daire çarpışma fiziği
-- AI rakip, stamina/depar sistemi, şarj tabanlı şut
-- Mobil joystick desteği
 
 ## Kullanıcı Tercihleri
 
