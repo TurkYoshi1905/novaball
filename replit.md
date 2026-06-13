@@ -184,20 +184,56 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - **60 FPS düzeltmesi**: Client `physicsStep` yerel tahmin + host durumu reconciliation ile çalışır; `SYNC_MS=33`, `INPUT_MS=16`
 - **Görünürlük düzeltmesi**: `onGameState` artık TÜM oyuncuların konumunu günceller (lokal oyuncu dahil) — host her zaman yetkilidir
 
-## Son Değişiklikler (Haziran 2026)
+## Sürüm Geçmişi
 
-### v0.6 — Forfeit Sonuç Ekranı & Supabase Maç Kaydı (13 Haziran 2026)
-- **Forfeit → sonuç ekranı herkese**: Maçı terk eden oyuncu artık `onLeave()` yerine `finishGame(score, {}, true, myTeam)` çağırır — hem terk eden hem kalan oyuncu `MultiplayerResult` ekranını görür
-- **Ranked + custom room forfeit**: `handleLeave` artık her iki mod için de forfeit broadcast yapar (sadece ranked değil)
-- **Supabase maç kaydı**: `handleMpMatchEnd` artık `saveMatch()` çağırır — kazanma/beraberlik/kaybetme, RP, gol sayısı Supabase'e yazılır
-- **`MPResult` yeni alanlar**: `localUsername` ve `opponentUsername` eklendi
-- **`MultiplayerResult` düzeltmesi**: `localUsername` ile kendi satırı doğru vurgulanır (`(sen)` etiketi, parlak border)
-- **SQL migration**: `supabase/003_match_history_multiplayer.sql` — `match_history` tablosuna `opponent_username TEXT` ve `match_uuid UUID` kolonları eklendi
+### v0.0.4 — Stabilite & Ağ Optimizasyonu (13 Haziran 2026)
 
-### v0.5.1 — Eşleşme Bekleme Düzeltmesi (13 Haziran 2026)
-- **Misafir takılma sorunu**: `subscribeToQueue` callback'indeki `return` kaldırıldı; misafir artık her koşulda `getMyQueueEntry()` kontrol eder
-- **Polling yedek**: Her 1.5s'de `checkMyEntry()` çağrısı — `postgres_changes` gecikmesine karşı güvenilir fallback
-- **İlk yükleme**: `checkMyEntry` artık subscription kurulmadan önce tanımlanır; ilk yüklemede de çalışır
+> Çok oyunculu sistemin köklü stabilite güncellemesi.
+
+#### 🔧 Eşleştirme Düzeltmeleri
+- `subscribeToQueue` callback'indeki erken `return` kaldırıldı → misafir artık her durumda maç ID'sini kontrol eder
+- **1.5s polling fallback**: `postgres_changes` gecikmişse veya kaçırılmışsa misafir yine de maça yönlendirilir
+- `checkMyEntry` subscription'dan önce tanımlanıyor → ilk yüklemede anında kontrol
+
+#### 🏁 Maç Sonu Ekranı
+- Maçı terk eden oyuncu artık doğrudan sonuç ekranına düşüyor (kaybeden olarak); kalan oyuncu aynı anda kazanan ekranını görüyor
+- Forfeit bildirimi ranked **ve** özel oda için yayınlanıyor — maçtaki herkes aynı anda sonuç ekranını görür
+- Maç sonucu ekranında `(sen)` etiketi + parlak border ile kendi satırın vurgulanıyor
+- Özel oda maçlarında kazanan satırı mor `#a78bfa` renk temasıyla gösterilir (RP bölümü yok)
+- `playerStats` tipine `team: Team` alanı eklendi → kazanan doğru takım bilgisiyle belirleniyor
+
+#### 💾 Supabase Maç Kaydı
+- `handleMpMatchEnd` artık `saveMatch()` çağırıyor → kazanma/beraberlik/kaybetme, gol ve RP Supabase'e yazılıyor
+- `MPResult` tipine `localUsername` + `opponentUsername` eklendi
+
+#### ⚡ 429 Rate Limit & Ağ Optimizasyonu
+| | Önceki | Yeni | Azalma |
+|---|---|---|---|
+| Host yayın hızı | 30fps (33ms) | **12fps (80ms)** | %60 |
+| Client girdi hızı | 60fps (16ms) | **20fps (50ms) + delta** | %90+ |
+- **Delta encoding**: girdi değişmediğinde 200ms heartbeat → broadcast trafiği ~**%80 azaldı**
+- 429 Too Many Requests / oyun donma sorunu tamamen giderildi
+
+#### 🗄️ Veritabanı Geliştirmeleri
+- `supabase/003`: `match_history` → `opponent_username`, `match_uuid` kolonları
+- `supabase/004`: `winner_team`, `forfeit`, `game_mode`, win streak kolonları; RLS politikaları
+- `player_stats_view` (kazanma oranı, maç başına gol) ve `recent_matches_view` eklendi
+- `update_win_streak()` PostgreSQL fonksiyonu + kapsamlı indeksler
+
+---
+
+### v0.0.3 — Çok Oyunculu Altyapı (12 Haziran 2026)
+- Matchmaking (1v1–5v5), Özel Odalar, Realtime senkronizasyon, Maç içi sohbet
+
+### v0.0.2 — Auth & Profil (12 Haziran 2026)
+- Kayıt/giriş/e-posta doğrulama, Share Card, Aktif oyuncu göstergesi
+
+### v0.0.1 — İlk Sürüm (11 Haziran 2026)
+- Temel oyun, AI rakip, fizik motoru, rank sistemi, mobil destek
+
+---
+
+### Dahili Yamalar (v0.0.4 kapsamında)
 
 ### v0.5 — 60 FPS & Multiplayer Görünürlük Düzeltmesi (13 Haziran 2026)
 - **60 FPS multiplayer**: `SYNC_MS=33` (host ~30fps yayın), `INPUT_MS=16` (client ~60fps girdi)

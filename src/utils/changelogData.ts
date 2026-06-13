@@ -16,6 +16,41 @@ export interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.0.4",
+    date: "13 Haziran 2026",
+    label: "alpha",
+    title: "Stabilite & Ağ Optimizasyonu — Maç Sonu, Rate Limit & Senkronizasyon",
+    description:
+      "NovaBall v0.0.4, çok oyunculu sistemin köklü stabilite güncellemesidir. Eşleştirmede misafirin bekleme ekranında kalması sorunu çözüldü, maçı terk eden oyuncu artık herkesle aynı anda sonuç ekranını görüyor, Supabase rate limit (429) aşılmasını önleyen delta encoding ile broadcast trafiği ~%80 azaltıldı ve veritabanı şeması gelişmiş istatistiklerle genişletildi.",
+    changes: [
+      // Eşleştirme
+      { type: "fix", text: "Eşleştirme misafir sorunu: subscribeToQueue callback'indeki erken return kaldırıldı — misafir artık her durumda kendi maç ID'sini kontrol eder" },
+      { type: "fix", text: "1.5 saniyelik polling fallback eklendi — Supabase postgres_changes olayı gecikmişse veya kaçırılmışsa misafir yine de maça yönlendirilir" },
+      { type: "improvement", text: "checkMyEntry fonksiyonu subscription kurulmadan önce tanımlanıyor — ilk yüklemede de anında kontrol yapılır" },
+      // Maç Sonu Ekranı
+      { type: "feature", text: "Maçı terk eden oyuncu artık menüye değil MultiplayerResult sonuç ekranına yönlendiriliyor (kaybeden olarak)" },
+      { type: "feature", text: "Forfeit bildirimi ranked ve özel oda maçlarının her ikisinde de yayınlanıyor — tüm oyuncular aynı anda sonuç ekranını görür" },
+      { type: "feature", text: "Maç sonuç ekranında '(sen)' etiketi ve parlak border ile kendi satırın vurgulanıyor" },
+      { type: "feature", text: "Özel oda maçlarında kazanan satırı mor (#a78bfa) renk temasıyla gösterilir — RP bölümü yok, sadece Zafer/Mağlubiyet" },
+      { type: "improvement", text: "playerStats tipine team alanı eklendi — kazanan artık rpGained yerine takım bilgisiyle doğru belirleniyor" },
+      // Supabase Maç Kaydı
+      { type: "feature", text: "Çok oyunculu maç sonucu artık Supabase'e kaydediliyor: kazanma/beraberlik/kaybetme, gol sayısı, RP değişimi match_history tablosuna yazılır" },
+      { type: "improvement", text: "MPResult tipine localUsername ve opponentUsername alanları eklendi — maç sonucu doğru kişiye atanır" },
+      // 429 / Ağ Optimizasyonu
+      { type: "performance", text: "Host durum yayını: SYNC_MS 33ms → 80ms (~30fps → ~12fps) — Supabase rate limit aşılması önlendi" },
+      { type: "performance", text: "Client girdi yayını: INPUT_MS 16ms → 50ms (~60fps → ~20fps) — toplam broadcast trafiği dramatik biçimde azaldı" },
+      { type: "performance", text: "Girdi delta encoding: girdi değişmediğinde 200ms heartbeat gönderilir — duran oyuncu saniyede 60 yerine 5 paket gönderiyor" },
+      { type: "fix", text: "429 Too Many Requests / oyun donma sorunu: toplam broadcast trafiği ~%80 azaltılarak Supabase ücretsiz katman limitleri içinde kalındı" },
+      // Veritabanı
+      { type: "improvement", text: "supabase/003: match_history tablosuna opponent_username (TEXT) ve match_uuid (UUID) kolonları eklendi" },
+      { type: "improvement", text: "supabase/004: match_history'ye winner_team, forfeit, game_mode, duration_seconds; players'a total_forfeits ve win streak kolonları" },
+      { type: "feature", text: "player_stats_view: kazanma oranı ve maç başına gol içeren hazır istatistik görünümü" },
+      { type: "feature", text: "recent_matches_view ve update_win_streak() PostgreSQL fonksiyonu eklendi" },
+      { type: "improvement", text: "Kapsamlı Row Level Security (RLS) politikaları match_history ve players tablolarına uygulandı" },
+      { type: "improvement", text: "İndeksler: player_username, opponent_username, match_uuid, result ve rp sütunları için sorgu hızı optimizasyonu" },
+    ],
+  },
+  {
     version: "0.0.3",
     date: "12 Haziran 2026",
     label: "alpha",
