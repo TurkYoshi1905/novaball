@@ -25,6 +25,7 @@ import { getPlayerByAuthId, createPlayer, updateLastSeen, saveMatch } from "./li
 
 export default function App() {
   const [screen,        setScreen]       = useState<AppScreen>("login");
+  const [isLoading,     setIsLoading]    = useState(true);
   const [username,      setUsername]     = useState("");
   const [displayName,   setDisplayName]  = useState("");
   const [pendingEmail,  setPendingEmail] = useState("");
@@ -69,13 +70,14 @@ export default function App() {
   // ─── Auth state machine ────────────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) { setScreen("login"); return; }
+      if (!session) { setScreen("login"); setIsLoading(false); return; }
       if (!session.user.email_confirmed_at) {
         setPendingEmail(session.user.email ?? "");
         setScreen("email-verify");
+        setIsLoading(false);
         return;
       }
-      loadPlayer(session.user.id);
+      loadPlayer(session.user.id).finally(() => setIsLoading(false));
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -153,6 +155,21 @@ export default function App() {
   }, []);
 
   // ─── Screen render ─────────────────────────────────────────────────────────
+
+  // Oturum kontrolü tamamlanana kadar yükleniyor ekranı — böylece giriş yapmış
+  // kullanıcı login/kayıt sayfasına hiç düşmez.
+  if (isLoading) {
+    return (
+      <div className="novaball-screen flex flex-col items-center justify-center min-h-[100dvh] bg-[#070d16]">
+        <div className="flex flex-col items-center gap-4">
+          <h1 className="text-white font-black text-4xl tracking-tight">
+            Nova<span className="text-[#4af]">Ball</span>
+          </h1>
+          <div className="w-8 h-8 border-2 border-[#4af]/30 border-t-[#4af] rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   if (screen === "login")        return <LoginPage onGoRegister={() => setScreen("register")} />;
   if (screen === "register")     return (
