@@ -41,6 +41,9 @@ export default function App() {
   const [isHost,        setIsHost]       = useState(false);
   const lastSeenTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
   const screenRef       = useRef<AppScreen>("login");
+  // isRecoveryRef: şifre sıfırlama linkine tıklanınca true olur.
+  // loadPlayer'ın setScreen("menu") çağırmasını engeller.
+  const isRecoveryRef   = useRef(false);
 
   // screenRef her zaman güncel ekranı yansıtır (loadPlayer closure stale sorununu önler)
   useEffect(() => { screenRef.current = screen; }, [screen]);
@@ -71,18 +74,38 @@ export default function App() {
     setDisplayName(player.display_name || player.username);
     updateLastSeen(player.username).catch(() => {});
 
-    // Sadece auth ekranlarındaysak ana menüye yönlendir.
-    // Oyun/multiplayer ekranlarındayken (TOKEN_REFRESHED vb.) yönlendirme yapma.
-    const AUTH_SCREENS: AppScreen[] = ["login", "register", "email-verify", "forgot-password", "reset-password"];
-    if (AUTH_SCREENS.includes(screenRef.current)) {
+    // "reset-password" HARİÇ auth giriş ekranlarından menüye yönlendir.
+    // reset-password: kullanıcı şifresini belirlemeli, menüye atılmamalı.
+    // TOKEN_REFRESHED/oyun ekranları: zaten başka guard tarafından ele alınıyor.
+    const ENTRY_SCREENS: AppScreen[] = ["login", "register", "email-verify", "forgot-password"];
+    if (ENTRY_SCREENS.includes(screenRef.current)) {
       setScreen("menu");
     }
   }, []);
 
   // ─── Auth state machine ────────────────────────────────────────────────────
   useEffect(() => {
+    // ── Şifre sıfırlama linki tespiti ──────────────────────────────────────
+    // Supabase recovery URL'si: https://app.com/#access_token=...&type=recovery
+    // window.location.hash'i getSession() çağrılmadan önce okuyoruz.
+    const rawHash = window.location.hash;
+    if (rawHash.includes("type=recovery") || rawHash.includes("type%3Drecovery")) {
+      isRecoveryRef.current = true;
+      // Hash'i temizle — sayfayı yenileyince tekrar tetiklenmesin.
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) { setScreen("login"); setIsLoading(false); return; }
+
+      // Şifre sıfırlama akışı: loadPlayer çağırma, doğrudan reset-password'a git.
+      // PASSWORD_RECOVERY event'i da aynı ekranı set edecek — ikisi tutarlı.
+      if (isRecoveryRef.current) {
+        setScreen("reset-password");
+        setIsLoading(false);
+        return;
+      }
+
       if (!session.user.email_confirmed_at) {
         setPendingEmail(session.user.email ?? "");
         setScreen("email-verify");
@@ -92,13 +115,26 @@ export default function App() {
       loadPlayer(session.user.id).finally(() => setIsLoading(false));
     });
 
-    const AUTH_SCREENS: AppScreen[] = ["login", "register", "email-verify", "forgot-password", "reset-password"];
+    // ENTRY_SCREENS: TOKEN_REFRESHED gelince "zaten bu ekrandayız, atlama" kontrolü için
+    const ENTRY_SCREENS: AppScreen[] = ["login", "register", "email-verify", "forgot-password"];
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "PASSWORD_RECOVERY") { setScreen("reset-password"); return; }
-      if (event === "SIGNED_OUT" || !session) { setScreen("login"); return; }
-      // TOKEN_REFRESHED (sekme geri dönüşü): zaten giriş yapılmışsa ve oyun/menü ekranındaysak hiçbir şey yapma
-      if (event === "TOKEN_REFRESHED" && !AUTH_SCREENS.includes(screenRef.current)) return;
+      if (event === "PASSWORD_RECOVERY") {
+        // Recovery link'e tıklandığında Supabase bu event'i atar.
+        isRecoveryRef.current = true;
+        setScreen("reset-password");
+        return;
+      }
+      if (event === "SIGNED_OUT" || !session) {
+        isRecoveryRef.current = false;
+        setScreen("login");
+        return;
+      }
+      // Recovery modundayken SIGNED_IN event'i gelirse atla —
+      // PASSWORD_RECOVERY zaten ekranı ayarladı, loadPlayer çağırma.
+      if (event === "SIGNED_IN" && isRecoveryRef.current) return;
+      // TOKEN_REFRESHED (sekme geri dönüşü): giriş ekranlarındaysa devam et, değilse atla.
+      if (event === "TOKEN_REFRESHED" && !ENTRY_SCREENS.includes(screenRef.current)) return;
       if (!session.user.email_confirmed_at) {
         setPendingEmail(session.user.email ?? "");
         setScreen("email-verify");
