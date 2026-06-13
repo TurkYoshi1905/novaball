@@ -159,6 +159,7 @@ export interface MPGameState {
   phase:           "countdown" | "playing" | "goal_pause" | "finished";
   lastGoalTeam?:   Team;
   hasBallUsername: string | null;
+  goalCounts?:     Record<string, number>;
 }
 
 export interface PlayerInput {

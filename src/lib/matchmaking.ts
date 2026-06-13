@@ -275,13 +275,19 @@ export function subscribeToRoom(
 
 export function subscribeToQueue(
   mode: GameMode,
-  onUpdate: (entries: QueueEntry[]) => void
+  onUpdate: (entries: QueueEntry[]) => void,
+  onMatchReady?: (match: MatchSession) => void
 ) {
-  return supabase
-    .channel(`queue_${mode}`)
-    .on("postgres_changes", { event: "*", schema: "public", table: "matchmaking_queue" }, async () => {
-      const entries = await getQueueEntries(mode);
-      onUpdate(entries);
-    })
-    .subscribe();
+  const ch = supabase.channel(`queue_${mode}`);
+  ch.on("postgres_changes", { event: "*", schema: "public", table: "matchmaking_queue" }, async () => {
+    const entries = await getQueueEntries(mode);
+    onUpdate(entries);
+  });
+  if (onMatchReady) {
+    ch.on("broadcast", { event: "match_ready" }, ({ payload }) => {
+      onMatchReady(payload.match as MatchSession);
+    });
+  }
+  ch.subscribe();
+  return ch;
 }

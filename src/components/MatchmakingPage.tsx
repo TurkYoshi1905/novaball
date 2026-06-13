@@ -53,6 +53,14 @@ export default function MatchmakingPage({ mode, username, displayName, onMatchFo
     if (err || !match) { matchingRef.current = false; setError("Eşleşme oluşturulamadı"); return; }
 
     await markQueueMatched(selected.map(e => e.username), match.id);
+
+    // Misafirlere anında broadcast ile haber ver — postgres_changes gecikmesine gerek yok
+    channelRef.current?.send({
+      type: "broadcast",
+      event: "match_ready",
+      payload: { match },
+    });
+
     foundRef.current = true;
     setMatchFound(true);
     setTimeout(() => onMatchFound(match), 1200);
@@ -92,6 +100,13 @@ export default function MatchmakingPage({ mode, username, displayName, onMatchFo
         if (updated.length >= needed) tryCreateMatch(updated);
         // Her zaman kendi entry'mizi kontrol et (postgres_changes gecikmesine karşı)
         await checkMyEntry();
+      }, (match) => {
+        // Host'un match_ready broadcast'i — misafir anında maça yönlendirilir
+        if (!alive || foundRef.current) return;
+        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        foundRef.current = true;
+        setMatchFound(true);
+        setTimeout(() => onMatchFound(match), 1200);
       });
 
       // Güvenilir polling yedek: postgres_changes kaçırılırsa polling yakalar (her 1.5s)

@@ -361,6 +361,7 @@ export function useMultiplayerPhysics({
         if (gr.ball.y >= GOAL_TOP && gr.ball.y <= GOAL_BOTTOM) {
           if (gr.ball.x < GOAL_LEFT_X) {
             gr.score.blue++; gr.lastGoalTeam = "blue";
+            if (gr.hasBall) gr.goalCounts[gr.hasBall] = (gr.goalCounts[gr.hasBall] ?? 0) + 1;
             gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
           }
         } else {
@@ -373,6 +374,7 @@ export function useMultiplayerPhysics({
         if (gr.ball.y >= GOAL_TOP && gr.ball.y <= GOAL_BOTTOM) {
           if (gr.ball.x > GOAL_RIGHT_X) {
             gr.score.red++; gr.lastGoalTeam = "red";
+            if (gr.hasBall) gr.goalCounts[gr.hasBall] = (gr.goalCounts[gr.hasBall] ?? 0) + 1;
             gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
           }
         } else {
@@ -616,6 +618,7 @@ export function useMultiplayerPhysics({
         g.gameTimeMs = state.gameTimeMs;
         g.hasBall    = state.hasBallUsername ?? null;
         if (state.lastGoalTeam) g.lastGoalTeam = state.lastGoalTeam;
+        if (state.goalCounts) g.goalCounts = { ...state.goalCounts };
         if (state.phase === "finished" && g.phase !== "finished") {
           g.phase = "finished"; setHudPhase("finished");
         } else if (g.phase !== "finished") {
@@ -673,6 +676,7 @@ export function useMultiplayerPhysics({
             phase:           g.phase,
             lastGoalTeam:    g.lastGoalTeam ?? undefined,
             hasBallUsername: g.hasBall,
+            goalCounts:      { ...g.goalCounts },
           };
           broadcastGameState(ch, state);
         }
