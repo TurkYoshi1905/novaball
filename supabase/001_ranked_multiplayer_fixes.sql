@@ -8,10 +8,6 @@ ALTER TABLE active_matches
 -- Mevcut maçları ranked yap
 UPDATE active_matches SET ranked = true WHERE ranked IS NULL;
 
--- ─── custom_rooms tablosuna ranked kolonu ekle ──────────────────────────────
-ALTER TABLE custom_rooms
-  ADD COLUMN IF NOT EXISTS ranked boolean DEFAULT false;
-
 -- ─── matchmaking_queue: zaman damgası indeksi ───────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_matchmaking_queue_joined_at
   ON matchmaking_queue (joined_at ASC);
