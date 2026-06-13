@@ -16,6 +16,32 @@ export interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.0.5",
+    date: "13 Haziran 2026",
+    label: "alpha",
+    title: "60 FPS Akıcılık, Premium UI & Kick Charge Görünürlüğü",
+    description:
+      "NovaBall v0.0.5; multiplayer kasma sorununu çözen lerp reconciliation, tüm oyunculara görünür güç barı, adaptif ağ senkronizasyonu (Supabase 50ms/30ms), tamamen yenilenen premium ana menü tasarımı, 'Nasıl Oynanır' modalı ve geliştirilmiş profil sayfası içeriyor.",
+    changes: [
+      // 60 FPS
+      { type: "performance", text: "Lerp reconciliation: host durumu gelince pozisyonlar hard-snap yerine yumuşak lerp ile düzeltilir — jitter tamamen giderildi" },
+      { type: "performance", text: "Lokal tahmin koruması: hata < 6px → yoksay, 6–60px → %15 yumuşak düzeltme, > 60px → snap" },
+      { type: "performance", text: "Uzak oyuncu interpolasyonu: diğer oyuncular %30 lerp ile güncellenir — hareketler pürüzsüz görünür" },
+      { type: "performance", text: "Adaptif sync hızı: WebSocket 33ms/16ms; Supabase fallback 50ms/30ms — rate limit koruması" },
+      // Kick charge
+      { type: "feature", text: "Tüm oyuncuların güç barı (kick charge arc) artık herkese görünür — host, kickCharge değerlerini game_state içinde yayınlar" },
+      // Fizik
+      { type: "improvement", text: "BALL_FRICTION: 0.980 → 0.983 (top daha uzun yuvarlanır)" },
+      { type: "improvement", text: "BALL_RESTITUTION: 0.72 → 0.76 (duvardan daha canlı sekme)" },
+      { type: "improvement", text: "PLAYER_FRICTION: 0.86 → 0.84 (daha hızlı durma, hassas hareket)" },
+      // UI
+      { type: "design", text: "Ana menü tamamen yenilendi: futbol sahası ambient efektleri, büyük 'Maça Gir' CTA butonu, premium kart tasarımı, daha iyi buton hiyerarşisi" },
+      { type: "feature", text: "'Nasıl Oynanır' modalı eklendi: Kontroller / Mekanikler / Mobil sekmeli, anahtar grafikleri ve oyun mekaniği açıklamalarıyla premium tam ekran modal" },
+      { type: "design", text: "Profil sayfası geliştirildi: gradient stat kartları, sol kenarlıklı maç geçmişi (GAL/BER/MAĞ), daha iyi avatar ve rank hero" },
+      { type: "improvement", text: "RoomConnection.isWebSocket getter eklendi — transport tipine göre dinamik sync hızı seçimi" },
+    ],
+  },
+  {
     version: "0.0.4",
     date: "13 Haziran 2026",
     label: "alpha",

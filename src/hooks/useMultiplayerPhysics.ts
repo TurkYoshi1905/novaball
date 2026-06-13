@@ -19,9 +19,9 @@ import { createRoomConnection, type RoomConnection } from "../lib/wsSync";
 const FRAME_MS      = 1000 / 60;
 // Adaptif sync hızları: WebSocket rate limit yoktur; Supabase fallback'te daha yavaş gönderim
 const SYNC_MS_WS    = 33;   // Host ~30fps durum yayını (WebSocket)
-const SYNC_MS_SB    = 80;   // Host ~12fps durum yayını (Supabase fallback — 429 koruması)
+const SYNC_MS_SB    = 50;   // Host ~20fps durum yayını (Supabase fallback)
 const INPUT_MS_WS   = 16;   // Client ~60fps girdi yayını (WebSocket)
-const INPUT_MS_SB   = 50;   // Client ~20fps girdi yayını (Supabase fallback)
+const INPUT_MS_SB   = 30;   // Client ~33fps girdi yayını (Supabase fallback)
 const INPUT_HBEAT   = 200;  // Delta değişmese bile 5fps heartbeat gönder
 
 const CENTER_X = CANVAS_WIDTH / 2;
