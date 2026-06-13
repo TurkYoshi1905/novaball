@@ -37,24 +37,27 @@ function calcMPRP(
   allPlayers: Array<{ username: string; displayName: string; team: Team }>,
   goalCounts: Record<string, number>,
   score: Score
-): Array<{ username: string; displayName: string; goals: number; rpGained: number }> {
+): Array<{ username: string; displayName: string; goals: number; rpGained: number; team: Team }> {
   if (winnerTeam === "draw" || winnerTeam !== myTeam) {
-    return allPlayers.map(p => ({ username: p.username, displayName: p.displayName, goals: goalCounts[p.username] ?? 0, rpGained: 0 }));
+    return allPlayers.map(p => ({
+      username: p.username, displayName: p.displayName,
+      goals: goalCounts[p.username] ?? 0, rpGained: 0, team: p.team,
+    }));
   }
-  const totalGoals = winnerTeam === "red" ? score.red : score.blue;
-  const totalRP    = calcRPForWin(totalGoals);
-  const winners    = allPlayers.filter(p => p.team === winnerTeam);
+  const totalGoals  = winnerTeam === "red" ? score.red : score.blue;
+  const totalRP     = calcRPForWin(totalGoals);
+  const winners     = allPlayers.filter(p => p.team === winnerTeam);
+  const losers      = allPlayers.filter(p => p.team !== winnerTeam);
   const winnerGoals = winners.map(p => goalCounts[p.username] ?? 0);
-  const sumGoals   = winnerGoals.reduce((a, b) => a + b, 0);
-  const distRP     = winners.map((p, i) => {
+  const sumGoals    = winnerGoals.reduce((a, b) => a + b, 0);
+  const distRP = winners.map((p, i) => {
     const g = winnerGoals[i];
     const share = sumGoals > 0 ? g / sumGoals : 1 / winners.length;
-    return { username: p.username, displayName: p.displayName, goals: g, rpGained: Math.round(totalRP * share) };
+    return { username: p.username, displayName: p.displayName, goals: g, rpGained: Math.round(totalRP * share), team: p.team };
   });
-  const losers = allPlayers.filter(p => p.team !== winnerTeam);
   return [
     ...distRP,
-    ...losers.map(p => ({ username: p.username, displayName: p.displayName, goals: goalCounts[p.username] ?? 0, rpGained: 0 })),
+    ...losers.map(p => ({ username: p.username, displayName: p.displayName, goals: goalCounts[p.username] ?? 0, rpGained: 0, team: p.team })),
   ];
 }
 

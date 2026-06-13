@@ -138,10 +138,14 @@ export default function MultiplayerResult({ result, onMenu, onPlayAgain }: Props
           <div className="flex flex-col gap-1.5">
             {cleanSorted.map((p, idx) => {
               const isMe     = p.username === localUsername;
-              const isWinner = !isDraw && p.rpGained > 0;
+              // Kazananı ranked'ta rpGained > 0, custom room'da team === winnerTeam ile belirle
+              const isWinner = !isDraw && (isRanked ? p.rpGained > 0 : p.team === winnerTeam);
               const isMvp    = p.goals > 0 && p.username === topScorer?.username && topScorer.goals > 0;
               const medal    = MEDALS[idx] ?? `${idx + 1}.`;
-              const winColor = isWinner ? TEAM_COLOR[winnerTeam as Team] : undefined;
+              // Custom room: mor tema, ranked: takım rengi
+              const winColor = isWinner
+                ? (isRanked ? TEAM_COLOR[winnerTeam as Team] : "#a78bfa")
+                : undefined;
 
               return (
                 <motion.div

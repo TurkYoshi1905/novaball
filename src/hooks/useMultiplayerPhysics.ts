@@ -19,9 +19,10 @@ import {
   broadcastInput, onPlayerInput, onForfeit,
 } from "../lib/realtime";
 
-const FRAME_MS  = 1000 / 60;
-const SYNC_MS   = 33;   // Host ~30fps durum yayını
-const INPUT_MS  = 16;   // Client ~60fps girdi yayını
+const FRAME_MS      = 1000 / 60;
+const SYNC_MS       = 80;   // Host ~12fps durum yayını (429 önleme)
+const INPUT_MS      = 50;   // Client ~20fps girdi yayını (429 önleme)
+const INPUT_HBEAT   = 200;  // Delta değişmese bile 5fps heartbeat gönder
 
 const CENTER_X = CANVAS_WIDTH / 2;
 const CENTER_Y = CANVAS_HEIGHT / 2;
@@ -80,6 +81,7 @@ interface GR {
   kickCd:       Record<string, number>; // frame bazlı soğuma
   prevShoot:    Record<string, boolean>;// önceki frame'de şut basılı mıydı
   inputs:       Record<string, Input>;
+  lastInput:    Input;               // delta: son gönderilen girdi
   lastSync:     number;
   lastInputBc:  number;
 }
@@ -194,6 +196,7 @@ export function useMultiplayerPhysics({
       lastGoalTeam: null, hasBall: null,
       facingX, facingY, kickCharge, kickCd, prevShoot, inputs,
       lastSync: 0, lastInputBc: 0,
+      lastInput: { dx: 0, dy: 0, shoot: false, sprint: false },
     };
   }, [match, ranked]);
 
@@ -678,12 +681,18 @@ export function useMultiplayerPhysics({
         // Host durumu geldiğinde tüm konumlar üzerine yazılır (reconciliation).
         physicsStep(g, dt);
         const now = Date.now();
-        if (now - g.lastInputBc >= INPUT_MS) {
+        const curDx = clamp(g.inputs[localUsername]?.dx ?? 0, -1, 1);
+        const curDy = clamp(g.inputs[localUsername]?.dy ?? 0, -1, 1);
+        const last  = g.lastInput;
+        // Delta encoding: girdi değiştiyse hemen gönder, yoksa INPUT_HBEAT (200ms) heartbeat
+        const inputChanged = last.dx !== curDx || last.dy !== curDy ||
+                             last.shoot !== shoot || last.sprint !== sprint;
+        const heartbeat    = now - g.lastInputBc >= INPUT_HBEAT;
+        if ((inputChanged && now - g.lastInputBc >= INPUT_MS) || heartbeat) {
           g.lastInputBc = now;
+          g.lastInput   = { dx: curDx, dy: curDy, shoot, sprint };
           const inp: PlayerInput = {
-            username: localUsername,
-            dx: g.inputs[localUsername]?.dx ?? 0,
-            dy: g.inputs[localUsername]?.dy ?? 0,
+            username: localUsername, dx: curDx, dy: curDy,
             shoot, sprint, ts: now,
           };
           broadcastInput(ch, inp);

@@ -186,6 +186,19 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 
 ## Son Değişiklikler (Haziran 2026)
 
+### v0.6 — Forfeit Sonuç Ekranı & Supabase Maç Kaydı (13 Haziran 2026)
+- **Forfeit → sonuç ekranı herkese**: Maçı terk eden oyuncu artık `onLeave()` yerine `finishGame(score, {}, true, myTeam)` çağırır — hem terk eden hem kalan oyuncu `MultiplayerResult` ekranını görür
+- **Ranked + custom room forfeit**: `handleLeave` artık her iki mod için de forfeit broadcast yapar (sadece ranked değil)
+- **Supabase maç kaydı**: `handleMpMatchEnd` artık `saveMatch()` çağırır — kazanma/beraberlik/kaybetme, RP, gol sayısı Supabase'e yazılır
+- **`MPResult` yeni alanlar**: `localUsername` ve `opponentUsername` eklendi
+- **`MultiplayerResult` düzeltmesi**: `localUsername` ile kendi satırı doğru vurgulanır (`(sen)` etiketi, parlak border)
+- **SQL migration**: `supabase/003_match_history_multiplayer.sql` — `match_history` tablosuna `opponent_username TEXT` ve `match_uuid UUID` kolonları eklendi
+
+### v0.5.1 — Eşleşme Bekleme Düzeltmesi (13 Haziran 2026)
+- **Misafir takılma sorunu**: `subscribeToQueue` callback'indeki `return` kaldırıldı; misafir artık her koşulda `getMyQueueEntry()` kontrol eder
+- **Polling yedek**: Her 1.5s'de `checkMyEntry()` çağrısı — `postgres_changes` gecikmesine karşı güvenilir fallback
+- **İlk yükleme**: `checkMyEntry` artık subscription kurulmadan önce tanımlanır; ilk yüklemede de çalışır
+
 ### v0.5 — 60 FPS & Multiplayer Görünürlük Düzeltmesi (13 Haziran 2026)
 - **60 FPS multiplayer**: `SYNC_MS=33` (host ~30fps yayın), `INPUT_MS=16` (client ~60fps girdi)
 - **İstemci-tarafı tahmin**: Client her frame'de yerel `physicsStep` çalıştırır; host durumu gelince tüm pozisyonlar reconcile edilir

@@ -217,7 +217,7 @@ export interface MPResult {
   rankChanged:      boolean;
   prevRankName:     string;
   newRankName:      string;
-  playerStats:      Array<{ username: string; displayName: string; goals: number; rpGained: number }>;
+  playerStats:      Array<{ username: string; displayName: string; goals: number; rpGained: number; team: Team }>;
   forfeit:          boolean;
   localUsername:    string;
   opponentUsername: string;
