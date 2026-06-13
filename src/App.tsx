@@ -40,6 +40,10 @@ export default function App() {
   const [currentRoom,   setCurrentRoom]  = useState<CustomRoom | null>(null);
   const [isHost,        setIsHost]       = useState(false);
   const lastSeenTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const screenRef       = useRef<AppScreen>("login");
+
+  // screenRef her zaman güncel ekranı yansıtır (loadPlayer closure stale sorununu önler)
+  useEffect(() => { screenRef.current = screen; }, [screen]);
 
   // ─── Load player after successful auth ────────────────────────────────────
   const loadPlayer = useCallback(async (authId: string) => {
@@ -66,7 +70,13 @@ export default function App() {
     setUsername(player.username);
     setDisplayName(player.display_name || player.username);
     updateLastSeen(player.username).catch(() => {});
-    setScreen("menu");
+
+    // Sadece auth ekranlarındaysak ana menüye yönlendir.
+    // Oyun/multiplayer ekranlarındayken (TOKEN_REFRESHED vb.) yönlendirme yapma.
+    const AUTH_SCREENS: AppScreen[] = ["login", "register", "email-verify", "forgot-password", "reset-password"];
+    if (AUTH_SCREENS.includes(screenRef.current)) {
+      setScreen("menu");
+    }
   }, []);
 
   // ─── Auth state machine ────────────────────────────────────────────────────
@@ -82,9 +92,13 @@ export default function App() {
       loadPlayer(session.user.id).finally(() => setIsLoading(false));
     });
 
+    const AUTH_SCREENS: AppScreen[] = ["login", "register", "email-verify", "forgot-password", "reset-password"];
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "PASSWORD_RECOVERY") { setScreen("reset-password"); return; }
       if (event === "SIGNED_OUT" || !session) { setScreen("login"); return; }
+      // TOKEN_REFRESHED (sekme geri dönüşü): zaten giriş yapılmışsa ve oyun/menü ekranındaysak hiçbir şey yapma
+      if (event === "TOKEN_REFRESHED" && !AUTH_SCREENS.includes(screenRef.current)) return;
       if (!session.user.email_confirmed_at) {
         setPendingEmail(session.user.email ?? "");
         setScreen("email-verify");
@@ -205,8 +219,8 @@ export default function App() {
   if (screen === "rankpage")  return <RankPage onBack={() => setScreen("menu")} />;
   if (screen === "changelog") return <ChangelogPage onBack={() => setScreen("menu")} />;
 
-  if (screen === "playing") return <GameBoard username={username} onBackToMenu={() => setScreen("menu")} />;
-  if (screen === "ranked")  return <GameBoard username={username} ranked onMatchEnd={handleMatchEnd} onBackToMenu={() => setScreen("menu")} />;
+  if (screen === "playing") return <GameBoard username={username} displayName={displayName} onBackToMenu={() => setScreen("menu")} />;
+  if (screen === "ranked")  return <GameBoard username={username} displayName={displayName} ranked onMatchEnd={handleMatchEnd} onBackToMenu={() => setScreen("menu")} />;
 
   if (screen === "result" && matchResult) {
     return (

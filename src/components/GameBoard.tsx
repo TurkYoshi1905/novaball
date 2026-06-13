@@ -6,6 +6,7 @@ import { RANKED_DURATION_MS, createMobileInput } from "../types/game";
 
 interface Props {
   username:     string;
+  displayName?: string;
   ranked?:      boolean;
   onBackToMenu: () => void;
   onMatchEnd?:  (playerGoals: number, aiGoals: number) => void;
@@ -21,7 +22,7 @@ function formatTime(ms: number, countdown = false, limit = 0): string {
   return `${m}:${s}`;
 }
 
-export default function GameBoard({ username, ranked = false, onBackToMenu, onMatchEnd }: Props) {
+export default function GameBoard({ username, displayName, ranked = false, onBackToMenu, onMatchEnd }: Props) {
   const canvasRef      = useRef<HTMLCanvasElement>(null);
   const mobileInputRef = useRef<MobileInput>(createMobileInput());
 
@@ -36,6 +37,7 @@ export default function GameBoard({ username, ranked = false, onBackToMenu, onMa
 
   const { resetGame } = useGamePhysics({
     username,
+    displayName: displayName || username,
     canvasRef,
     onScoreChange: setScore,
     onGoal: handleGoal,

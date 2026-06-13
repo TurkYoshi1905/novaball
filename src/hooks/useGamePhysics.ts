@@ -72,6 +72,7 @@ interface GR {
 
 interface Options {
   username: string;
+  displayName?: string;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   onScoreChange: (s: Score) => void;
   onGoal: (t: "red" | "blue") => void;
@@ -82,10 +83,11 @@ interface Options {
   active: boolean;
 }
 
-export function useGamePhysics({ username, canvasRef, onScoreChange, onGoal, onTimeChange, onMatchEnd, timeLimit, mobileInputRef, active }: Options) {
+export function useGamePhysics({ username, displayName, canvasRef, onScoreChange, onGoal, onTimeChange, onMatchEnd, timeLimit, mobileInputRef, active }: Options) {
+  const playerLabel = displayName || username;
   const rafRef = useRef<number | null>(null);
   const sr = useRef<GR>({
-    player: mkPlayer(username, "red"), aiPlayer: mkPlayer("AI", "blue"), ball: mkBall(),
+    player: mkPlayer(playerLabel, "red"), aiPlayer: mkPlayer("AI", "blue"), ball: mkBall(),
     score: { red: 0, blue: 0 }, gameTime: 0, lastTs: 0, keys: new Set(),
     shootFx: { active: false, alpha: 0, ring: 0 }, aiShootFx: { active: false, alpha: 0, ring: 0 },
     goalState: null, kickCd: 0, aiKickCd: 0,
@@ -97,7 +99,7 @@ export function useGamePhysics({ username, canvasRef, onScoreChange, onGoal, onT
 
   const resetPos = useCallback(() => {
     const s = sr.current;
-    s.player = mkPlayer(username, "red"); s.aiPlayer = mkPlayer("AI", "blue"); s.ball = mkBall();
+    s.player = mkPlayer(playerLabel, "red"); s.aiPlayer = mkPlayer("AI", "blue"); s.ball = mkBall();
     s.shootFx = { active: false, alpha: 0, ring: 0 }; s.aiShootFx = { active: false, alpha: 0, ring: 0 };
     s.kickCd = 0; s.aiKickCd = 0; s.hasBall = null;
     s.stamina = STAMINA_MAX; s.isSprinting = false;
@@ -569,16 +571,16 @@ function drawPlayer(ctx: CanvasRenderingContext2D, p: PlayerState, hasBall: bool
   ctx.lineWidth = hasBall ? 2.5 : 1.5; ctx.stroke();
   ctx.beginPath(); ctx.arc(p.x-p.radius*.3,p.y-p.radius*.35,p.radius*.3,0,Math.PI*2);
   ctx.fillStyle="rgba(255,255,255,.22)"; ctx.fill();
-  const name     = p.name;
-  const fontSize = name.length > 12 ? 8 : name.length > 9 ? 9 : name.length > 6 ? 10 : 11;
-  ctx.font = `bold ${fontSize}px 'Inter',sans-serif`;
+  // Daire içinde takım numarası: kırmızı=1 (oyuncu), mavi=2 (AI)
+  ctx.font = "bold 16px 'Inter',sans-serif";
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255,255,255,.92)";
-  ctx.fillText(name.length > 16 ? name.slice(0,15)+"…" : name, p.x, p.y);
-  const tag = name.length > 16 ? name.slice(0,15)+"…" : name;
+  ctx.fillStyle = "rgba(255,255,255,.95)";
+  ctx.fillText(isRed ? "1" : "2", p.x, p.y);
+  // Dairenin altında displayName etiketi
+  const tag = p.name.length > 12 ? p.name.slice(0, 11) + "…" : p.name;
   ctx.font = "bold 10px 'Inter',sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,.7)";
-  ctx.fillText(tag, p.x, p.y + p.radius + 10);
+  ctx.fillStyle = isRed ? "rgba(255,255,255,.85)" : "rgba(255,255,255,.55)";
+  ctx.fillText(tag, p.x, p.y + p.radius + 12);
 }
 
 function drawStaminaBar(ctx: CanvasRenderingContext2D, p: PlayerState, stamina: number, sprinting: boolean) {
