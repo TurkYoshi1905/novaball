@@ -1,5 +1,14 @@
-// WebSocket tabanlı oyun senkronizasyon istemcisi
-// Supabase broadcast yerine kullanılır — rate limit yok, daha düşük gecikme
+/**
+ * Hibrit oyun senkronizasyon katmanı
+ *
+ * WebSocket sunucusu (api-server) erişilebilirse → WebSocket kullan (düşük gecikme, rate limit yok)
+ * Erişilemiyorsa (Vercel deploy, hata vb.) → Supabase broadcast'e otomatik geç
+ *
+ * Dışarıya aynı API sunulur — çağıran kod hangi transport'un kullanıldığını bilmez.
+ */
+
+import { supabase } from "./supabase";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 type Handler<T = unknown> = (payload: T) => void;
 
@@ -10,90 +19,179 @@ interface WSMessage {
   payload: unknown;
 }
 
+type Transport = "ws" | "supabase" | "pending";
+
 class RoomConnection {
   private ws: WebSocket | null = null;
+  private supabaseCh: RealtimeChannel | null = null;
   private handlers = new Map<string, Set<Handler>>();
+  private transport: Transport = "pending";
+  private pendingOutbox: Array<{ type: string; payload: unknown }> = [];
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private fallbackTimer: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
-  private url: string;
 
   constructor(
     private readonly roomId: string,
     private readonly username: string,
   ) {
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    this.url = `${proto}//${window.location.host}/api-server`;
-    this.connect();
+    this.tryWebSocket();
   }
 
-  private connect() {
+  // ── WebSocket yolu ────────────────────────────────────────────────────────
+
+  private get wsUrl(): string {
+    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${proto}//${window.location.host}/api-server`;
+  }
+
+  private tryWebSocket() {
     if (this.closed) return;
     try {
-      const ws = new WebSocket(this.url);
+      const ws = new WebSocket(this.wsUrl);
       this.ws = ws;
 
+      // 3s içinde bağlanamazsa Supabase'e geç
+      this.fallbackTimer = setTimeout(() => {
+        if (this.transport === "pending") {
+          ws.onclose = null;
+          ws.onerror = null;
+          ws.close();
+          this.ws = null;
+          this.activateSupabase();
+        }
+      }, 3000);
+
       ws.onopen = () => {
-        this.send("join", null);
+        clearTimeout(this.fallbackTimer!);
+        this.fallbackTimer = null;
+        this.transport = "ws";
+        // Oda katılımını bildir
+        this.rawSendWS("join", null);
+        // Bekleyen mesajları gönder
+        for (const m of this.pendingOutbox) this.rawSendWS(m.type, m.payload);
+        this.pendingOutbox = [];
       };
 
       ws.onmessage = (event: MessageEvent) => {
         try {
           const msg = JSON.parse(event.data as string) as WSMessage;
-          const hs = this.handlers.get(msg.type);
-          if (hs) for (const h of hs) h(msg.payload);
-        } catch { /* geçersiz mesaj */ }
+          this.dispatch(msg.type, msg.payload);
+        } catch { /* geçersiz JSON */ }
       };
 
       ws.onclose = () => {
         if (this.closed) return;
-        // 2s sonra yeniden bağlan
-        this.reconnectTimer = setTimeout(() => this.connect(), 2000);
+        if (this.transport === "ws") {
+          // Bağlantı kesildi — 2s sonra yeniden dene
+          this.reconnectTimer = setTimeout(() => this.tryWebSocket(), 2000);
+        } else if (this.transport === "pending") {
+          // Bağlanmadan kapandı → Supabase'e geç
+          clearTimeout(this.fallbackTimer!);
+          this.activateSupabase();
+        }
       };
 
       ws.onerror = () => {
-        ws.close(); // onclose → reconnect tetikler
+        clearTimeout(this.fallbackTimer!);
+        this.fallbackTimer = null;
+        ws.onclose = null;
+        ws.close();
+        this.ws = null;
+        if (this.transport === "pending") {
+          this.activateSupabase();
+        } else if (this.transport === "ws" && !this.closed) {
+          this.transport = "pending";
+          this.reconnectTimer = setTimeout(() => this.tryWebSocket(), 2000);
+        }
       };
     } catch {
-      if (!this.closed) {
-        this.reconnectTimer = setTimeout(() => this.connect(), 2000);
-      }
+      clearTimeout(this.fallbackTimer!);
+      if (!this.closed) this.activateSupabase();
     }
   }
 
-  /** Odaya mesaj gönder */
-  send(type: string, payload: unknown): boolean {
+  private rawSendWS(type: string, payload: unknown) {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      const msg: WSMessage = {
-        type,
-        roomId: this.roomId,
-        username: this.username,
-        payload,
-      };
+      const msg: WSMessage = { type, roomId: this.roomId, username: this.username, payload };
       this.ws.send(JSON.stringify(msg));
+    }
+  }
+
+  // ── Supabase fallback yolu ────────────────────────────────────────────────
+
+  private activateSupabase() {
+    if (this.closed || this.supabaseCh) return;
+    this.transport = "supabase";
+
+    const ch = supabase.channel(this.roomId, {
+      config: { broadcast: { self: false } },
+    });
+
+    // Var olan tüm handler'ları Supabase kanalına bağla
+    for (const [eventType] of this.handlers) {
+      ch.on("broadcast", { event: eventType }, ({ payload }) => {
+        this.dispatch(eventType, payload);
+      });
+    }
+
+    ch.subscribe(() => {
+      // Bekleyen mesajları Supabase üzerinden gönder
+      for (const m of this.pendingOutbox) {
+        ch.send({ type: "broadcast", event: m.type, payload: m.payload });
+      }
+      this.pendingOutbox = [];
+    });
+
+    this.supabaseCh = ch;
+  }
+
+  // ── Ortak API ─────────────────────────────────────────────────────────────
+
+  private dispatch(type: string, payload: unknown) {
+    const hs = this.handlers.get(type);
+    if (hs) for (const h of hs) h(payload);
+  }
+
+  /** Odaya mesaj gönder (her iki transport'ta da çalışır) */
+  send(type: string, payload: unknown): boolean {
+    if (this.transport === "ws") {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.rawSendWS(type, payload);
+        return true;
+      }
+      return false;
+    }
+    if (this.transport === "supabase" && this.supabaseCh) {
+      this.supabaseCh.send({ type: "broadcast", event: type, payload });
       return true;
     }
+    // Hâlâ bağlanılıyor — giden kutuya ekle
+    this.pendingOutbox.push({ type, payload });
     return false;
   }
 
-  /** Belirli bir mesaj türü için dinleyici ekle */
+  /** Gelen mesaj dinleyicisi ekle */
   on<T>(type: string, handler: Handler<T>): this {
     if (!this.handlers.has(type)) this.handlers.set(type, new Set());
     this.handlers.get(type)!.add(handler as Handler);
+
+    // Supabase zaten aktifse yeni event'i hemen kaydet
+    if (this.supabaseCh && this.transport === "supabase") {
+      this.supabaseCh.on("broadcast", { event: type }, ({ payload }) => {
+        this.dispatch(type, payload);
+      });
+    }
     return this;
   }
 
-  /** Bağlantıyı kapat (yeniden bağlantı olmaz) */
+  /** Bağlantıyı tamamen kapat */
   close(): void {
     this.closed = true;
-    if (this.reconnectTimer !== null) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-    if (this.ws) {
-      this.ws.onclose = null; // döngüyü önle
-      this.ws.close();
-      this.ws = null;
-    }
+    if (this.reconnectTimer !== null) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+    if (this.fallbackTimer !== null) { clearTimeout(this.fallbackTimer); this.fallbackTimer = null; }
+    if (this.ws) { this.ws.onclose = null; this.ws.onerror = null; this.ws.close(); this.ws = null; }
+    if (this.supabaseCh) { this.supabaseCh.unsubscribe(); this.supabaseCh = null; }
   }
 }
 
