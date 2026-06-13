@@ -33,6 +33,7 @@ export default function MatchmakingPage({ mode, username, displayName, onMatchFo
 
   const needed       = MODE_TOTAL(mode);
   const channelRef   = useRef<ReturnType<typeof subscribeToQueue> | null>(null);
+  const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null);
   const matchingRef  = useRef(false);
   const foundRef     = useRef(false);
   const startTimeRef = useRef(Date.now());
@@ -65,26 +66,38 @@ export default function MatchmakingPage({ mode, username, displayName, onMatchFo
       if (err) { setError(err); return; }
       startTimeRef.current = Date.now();
 
-      const initial = await getQueueEntries(mode);
-      if (alive) setQueueCount(Math.min(initial.length, needed));
-      if (initial.length >= needed) { tryCreateMatch(initial); return; }
-
-      channelRef.current = subscribeToQueue(mode, async (updated) => {
+      // Maç bulundu mu diye kendi entry'mizi kontrol eden yardımcı
+      const checkMyEntry = async () => {
         if (!alive || foundRef.current) return;
-        setQueueCount(Math.min(updated.length, needed));
-        if (updated.length >= needed) { tryCreateMatch(updated); return; }
-
-        // Non-host: maç oluşturuldu mu diye kendi entry'mizi kontrol et
         const mine = await getMyQueueEntry(username);
         if (mine?.match_id && !foundRef.current) {
           const m = await getMatch(mine.match_id);
           if (m && alive) {
             foundRef.current = true;
+            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
             setMatchFound(true);
             setTimeout(() => onMatchFound(m), 1200);
           }
         }
+      };
+
+      const initial = await getQueueEntries(mode);
+      if (alive) setQueueCount(Math.min(initial.length, needed));
+      // return YOK — her durumda subscription + polling kurulsun
+      if (initial.length >= needed) tryCreateMatch(initial);
+
+      channelRef.current = subscribeToQueue(mode, async (updated) => {
+        if (!alive || foundRef.current) return;
+        setQueueCount(Math.min(updated.length, needed));
+        if (updated.length >= needed) tryCreateMatch(updated);
+        // Her zaman kendi entry'mizi kontrol et (postgres_changes gecikmesine karşı)
+        await checkMyEntry();
       });
+
+      // Güvenilir polling yedek: postgres_changes kaçırılırsa polling yakalar (her 1.5s)
+      pollRef.current = setInterval(checkMyEntry, 1500);
+      // İlk yükleme: mevcut entry'yi hemen kontrol et
+      await checkMyEntry();
     })();
 
     const dotTimer = setInterval(() => setDotIdx(i => (i + 1) % 3), 600);
@@ -105,6 +118,7 @@ export default function MatchmakingPage({ mode, username, displayName, onMatchFo
       alive = false;
       clearInterval(dotTimer);
       clearInterval(countdownTimer);
+      if (pollRef.current) clearInterval(pollRef.current);
       channelRef.current?.unsubscribe();
       if (!foundRef.current) leaveQueue(username).catch(() => {});
     };
