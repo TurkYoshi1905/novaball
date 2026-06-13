@@ -20,8 +20,8 @@ import {
 } from "../lib/realtime";
 
 const FRAME_MS  = 1000 / 60;
-const SYNC_MS   = 50;
-const INPUT_MS  = 33;
+const SYNC_MS   = 33;   // Host ~30fps durum yayını
+const INPUT_MS  = 16;   // Client ~60fps girdi yayını
 
 const CENTER_X = CANVAS_WIDTH / 2;
 const CENTER_Y = CANVAS_HEIGHT / 2;
@@ -604,6 +604,8 @@ export function useMultiplayerPhysics({
         }
       });
     } else {
+      // Client: host'tan gelen yetkili durumu tüm oyuncular için uygula (lokal dahil).
+      // Bu, misafir oyuncunun host ekranında görünmemesi sorununu çözer.
       onGameState(ch, state => {
         const g = grRef.current; if (!g) return;
         g.ball       = { ...state.ball };
@@ -616,9 +618,10 @@ export function useMultiplayerPhysics({
         } else if (g.phase !== "finished") {
           g.phase = state.phase === "goal_pause" ? "goal_pause" : "playing";
         }
+        // Tüm oyuncuları güncelle — lokal oyuncu dahil (host yetkili kaynaktır).
         for (const sp of state.players) {
           const lp = g.players.find(p => p.username === sp.username);
-          if (lp && sp.username !== localUsername) {
+          if (lp) {
             lp.x = sp.x; lp.y = sp.y; lp.vx = sp.vx; lp.vy = sp.vy;
             lp.stamina = sp.stamina; lp.kickCharge = sp.kickCharge;
             g.kickCharge[sp.username] = sp.kickCharge;
@@ -654,6 +657,7 @@ export function useMultiplayerPhysics({
       g.inputs[localUsername] = { dx: clamp(dx, -1, 1), dy: clamp(dy, -1, 1), shoot, sprint };
 
       if (isHost) {
+        // Host: fiziği çalıştır ve durumu yayınla
         physicsStep(g, dt);
         const now = Date.now();
         if (now - g.lastSync >= SYNC_MS) {
@@ -670,6 +674,9 @@ export function useMultiplayerPhysics({
           broadcastGameState(ch, state);
         }
       } else {
+        // Client: istemci-tarafı tahmin — yerel girdiyi anında uygula (60 FPS akıcı hareket).
+        // Host durumu geldiğinde tüm konumlar üzerine yazılır (reconciliation).
+        physicsStep(g, dt);
         const now = Date.now();
         if (now - g.lastInputBc >= INPUT_MS) {
           g.lastInputBc = now;

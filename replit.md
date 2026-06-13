@@ -109,8 +109,9 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - RAF döngüsü dışında **asla** canvas'a yazılmaz.
 
 ### Çok Oyunculu (Multiplayer)
-- **Host**, fiziği çalıştırır ve durumu ~20 FPS ile yayınlar.
-- **Client**, kendi girişini ~30 FPS ile yayınlar ve host'un gönderdiği durumu alır.
+- **Host**, fiziği çalıştırır ve durumu ~30 FPS ile yayınlar (`SYNC_MS=33`).
+- **Client**, kendi girişini ~60 FPS ile yayınlar (`INPUT_MS=16`) ve host'tan gelen durum ile tüm oyuncu konumlarını günceller (yerel oyuncu dahil).
+- **İstemci-tarafı tahmin**: Client kendi girişini her frame'de yerel fizik adımına da uygular; host durumu gelince tüm pozisyonlar üzerine yazılır (reconciliation). Bu sayede 60 FPS akıcı hareket sağlanır.
 - Supabase Realtime broadcast kanalları kullanılır (WebSocket üzerinde).
 - **Forfeit sistemi**: Ranked maçtan ayrılan oyuncu `player_forfeit` eventi yayınlar. Kalan oyuncu otomatik 10 RP kazanır.
 - **HUD**: GameBoard'daki `game-hud`, `hud-side`, `hud-center`, `hud-score`, `hud-time` CSS sınıflarının aynısı kullanılır.
@@ -180,8 +181,17 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - Multiplayer canvas: oyuncuların içinde `teamIndex` numarası + altında `displayName` etiketi gösterilir
 - `MultiplayerBoard` artık `game-board-outer` CSS sistemi kullanıyor (GameBoard ile aynı HUD)
 - Özel odalar her zaman `ranked: false` — `CreateRoomPage`'de toggle yok
+- **60 FPS düzeltmesi**: Client `physicsStep` yerel tahmin + host durumu reconciliation ile çalışır; `SYNC_MS=33`, `INPUT_MS=16`
+- **Görünürlük düzeltmesi**: `onGameState` artık TÜM oyuncuların konumunu günceller (lokal oyuncu dahil) — host her zaman yetkilidir
 
 ## Son Değişiklikler (Haziran 2026)
+
+### v0.5 — 60 FPS & Multiplayer Görünürlük Düzeltmesi (13 Haziran 2026)
+- **60 FPS multiplayer**: `SYNC_MS=33` (host ~30fps yayın), `INPUT_MS=16` (client ~60fps girdi)
+- **İstemci-tarafı tahmin**: Client her frame'de yerel `physicsStep` çalıştırır; host durumu gelince tüm pozisyonlar reconcile edilir
+- **Görünürlük düzeltmesi**: `onGameState` artık lokal oyuncunun pozisyonunu da host'tan günceller — host her zaman yetkili kaynak
+- **`active_matches.ranked` kolonu**: Supabase `PGRST204` hatası giderildi — `supabase/001_ranked_multiplayer_fixes.sql` ile kolonu ekle
+- **SQL migration**: `supabase/001_ranked_multiplayer_fixes.sql` workspace köküne taşındı
 
 ### v0.4 — MP Canvas İsim Gösterimi & Saha, Ranked AI Düzeltmesi (12 Haziran 2026)
 - **Multiplayer canvas oyuncu çizimi**: daire içinde `teamIndex` numarası + hemen altında `displayName` etiketi (lokal oyuncu daha parlak beyaz, diğerleri yarı saydam)
@@ -190,31 +200,22 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - **Top tutma + çalma sistemi** (v0.4a): `useMultiplayerPhysics.ts`'e `POSSESS_DIST`, `attachBall()`, `STEAL_DIST` entegrasyonu; possession aura; releaseKick/tryKick şut sistemi; `hasBallUsername` MPGameState'e eklendi
 
 ### v0.3 — Multiplayer HUD & Maç Süresi (12 Haziran 2026)
-- **MultiplayerBoard tam yenileme**: GameBoard'daki tüm HUD CSS sınıfları entegre edildi (`game-board-outer`, `game-hud`, `hud-side`, `hud-center`, `hud-score`, `hud-time`, `game-canvas-zone`, `goal-flash-overlay`, `keyboard-hints`)
-- **Maç içi 90s geri sayaç**: Ranked maçlarda `RANKED_DURATION_MS` → 0 geri sayım; son 15s kırmızı nabız animasyonu (`hud-time-urgent`)
+- **MultiplayerBoard tam yenileme**: GameBoard'daki tüm HUD CSS sınıfları entegre edildi
+- **Maç içi 90s geri sayaç**: Ranked maçlarda `RANKED_DURATION_MS` → 0 geri sayım; son 15s kırmızı nabız animasyonu
 - **Özel oda sayacı**: Serbest maçlarda yukarı sayaç (süre sınırı yok)
-- **Canvas çizimi**: Oyuncu isim etiketleri kaldırıldı; daireler içinde yalnızca takım numarası gösterilir
-- **MultiplayerResult tam yenileme**: Oyuncu sıralama tablosu (🥇🥈🥉 madalyalar, RP sütunu, ⭐ MVP rozeti, gol sayısı), skor kartı, rank ilerleme barı
-- **Özel odalar → her zaman serbest**: `CreateRoomPage`'den ranked toggle kaldırıldı
-- **Host ayrılınca üyeler atılıyor**: `RoomLobbyPage` null oda tespitinde misafirleri 2.5s sonra yönlendiriyor
-- **Matchmaking 90s sayaç**: Eşleşme bulunamazsa otomatik iptal (son 20s kırmızı)
+- **MultiplayerResult tam yenileme**: Oyuncu sıralama tablosu, skor kartı, rank ilerleme barı
 - **Forfeit sistemi**: Ranked maçtan ayrılan oyuncu rakibine 10 RP kazandırır
 
 ### v0.2 — Supabase Multiplayer (11 Haziran 2026)
 - Supabase Auth (e-posta/şifre), PostgreSQL veri katmanı
 - Gerçek zamanlı çok oyunculu (Supabase Realtime broadcast)
 - Matchmaking kuyruğu, özel odalar, oda lobi
-- MatchIntroPage (VS geri sayımı), MultiplayerBoard, MultiplayerResult
-- Rank sistemi: 7 kademe × 3 alt rank, localStorage + Supabase dual storage
-- Lider tablosu, profil sayfası, değişiklik günlüğü
 
 ### v0.1 — Tek Oyunculu Temel (11 Haziran 2026)
 - HTML5 Canvas + requestAnimationFrame oyun döngüsü
 - İmpuls tabanlı daire çarpışma fiziği
-- AI rakip (basit hedefleme)
-- Stamina/depar sistemi, şarj tabanlı şut mekanizması
-- Mobil joystick desteği (yatay ekran zorunlu)
-- Rank sistemi temeli (localStorage)
+- AI rakip, stamina/depar sistemi, şarj tabanlı şut
+- Mobil joystick desteği
 
 ## Kullanıcı Tercihleri
 
