@@ -101,6 +101,7 @@ export interface MatchResultData {
 }
 
 export type AppScreen =
+  | "landing"
   | "login" | "register" | "email-verify"
   | "forgot-password" | "reset-password"
   | "menu" | "rankpage" | "changelog"

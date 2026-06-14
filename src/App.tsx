@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "./lib/supabase";
 import { signOut } from "./lib/auth";
+import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
 import EmailVerifyPage from "./components/auth/EmailVerifyPage";
@@ -27,7 +28,7 @@ import { getPlayerByAuthId, createPlayer, updateLastSeen, saveMatch } from "./li
 import { leaveRoom } from "./lib/matchmaking";
 
 export default function App() {
-  const [screen,        setScreen]       = useState<AppScreen>("login");
+  const [screen,        setScreen]       = useState<AppScreen>("landing");
   const [isLoading,     setIsLoading]    = useState(true);
   const [username,      setUsername]     = useState("");
   const [displayName,   setDisplayName]  = useState("");
@@ -42,7 +43,7 @@ export default function App() {
   const [isHost,        setIsHost]       = useState(false);
   const [isCustomRoom,  setIsCustomRoom] = useState(false);
   const lastSeenTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
-  const screenRef       = useRef<AppScreen>("login");
+  const screenRef       = useRef<AppScreen>("landing");
   // isRecoveryRef: şifre sıfırlama linkine tıklanınca true olur.
   // loadPlayer'ın setScreen("menu") çağırmasını engeller.
   const isRecoveryRef   = useRef(false);
@@ -79,7 +80,7 @@ export default function App() {
     // "reset-password" HARİÇ auth giriş ekranlarından menüye yönlendir.
     // reset-password: kullanıcı şifresini belirlemeli, menüye atılmamalı.
     // TOKEN_REFRESHED/oyun ekranları: zaten başka guard tarafından ele alınıyor.
-    const ENTRY_SCREENS: AppScreen[] = ["login", "register", "email-verify", "forgot-password"];
+    const ENTRY_SCREENS: AppScreen[] = ["landing", "login", "register", "email-verify", "forgot-password"];
     if (ENTRY_SCREENS.includes(screenRef.current)) {
       setScreen("menu");
     }
@@ -98,7 +99,7 @@ export default function App() {
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) { setScreen("login"); setIsLoading(false); return; }
+      if (!session) { setScreen("landing"); setIsLoading(false); return; }
 
       // Şifre sıfırlama akışı: loadPlayer çağırma, doğrudan reset-password'a git.
       // PASSWORD_RECOVERY event'i da aynı ekranı set edecek — ikisi tutarlı.
@@ -118,7 +119,7 @@ export default function App() {
     });
 
     // ENTRY_SCREENS: TOKEN_REFRESHED gelince "zaten bu ekrandayız, atlama" kontrolü için
-    const ENTRY_SCREENS: AppScreen[] = ["login", "register", "email-verify", "forgot-password"];
+    const ENTRY_SCREENS: AppScreen[] = ["landing", "login", "register", "email-verify", "forgot-password"];
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "PASSWORD_RECOVERY") {
@@ -129,7 +130,7 @@ export default function App() {
       }
       if (event === "SIGNED_OUT" || !session) {
         isRecoveryRef.current = false;
-        setScreen("login");
+        setScreen("landing");
         return;
       }
       // Recovery modundayken SIGNED_IN event'i gelirse atla —
@@ -259,6 +260,7 @@ export default function App() {
     );
   }
 
+  if (screen === "landing") return <LandingPage onLogin={() => setScreen("login")} onRegister={() => setScreen("register")} />;
   if (screen === "login")        return <LoginPage onGoRegister={() => setScreen("register")} onGoForgot={() => setScreen("forgot-password")} />;
   if (screen === "register")     return (
     <RegisterPage
