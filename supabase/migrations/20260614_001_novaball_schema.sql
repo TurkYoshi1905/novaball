@@ -90,22 +90,8 @@ CREATE TABLE IF NOT EXISTS public.custom_rooms (
   status        TEXT         NOT NULL DEFAULT 'waiting'
                              CHECK (status IN ('waiting','starting','playing','finished')),
   channel_id    TEXT         NOT NULL UNIQUE DEFAULT uuid_generate_v4()::TEXT,
-  ranked        BOOLEAN      NOT NULL DEFAULT FALSE,
   created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
-
--- ─── Mevcut tablolara eksik kolon ekle (yeniden çalıştırma güvenliği) ─────────
-DO $$
-BEGIN
-  -- custom_rooms.ranked
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema='public' AND table_name='custom_rooms' AND column_name='ranked'
-  ) THEN
-    ALTER TABLE public.custom_rooms ADD COLUMN ranked BOOLEAN NOT NULL DEFAULT FALSE;
-  END IF;
-END;
-$$;
 
 -- max_players varsayılanını 10'a güncelle (önceden 2 ise düzelt)
 ALTER TABLE public.custom_rooms ALTER COLUMN max_players SET DEFAULT 10;
@@ -418,7 +404,7 @@ CREATE POLICY "custom_rooms_delete_host"   ON public.custom_rooms FOR DELETE
 -- NOTLAR
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- 1. Bu dosya Supabase SQL Editor'da her zaman güvenle yeniden çalıştırılabilir.
--- 2. Özel oda maçları ranked=false — match_history'ye kaydedilmez.
+-- 2. Özel oda maçları her zaman serbest — ranked kolonu yok, match_history'ye kaydedilmez.
 -- 3. custom_rooms.max_players: 2(1v1) · 4(2v2) · 6(3v3) · 8(4v4) · 10(5v5)
 -- 4. room_leave: HOST çıkarsa oda SİLİNİR · GUEST çıkarsa slot BOŞALIR
 -- 5. room_join_team: her takım maks max_players/2 oyuncu
