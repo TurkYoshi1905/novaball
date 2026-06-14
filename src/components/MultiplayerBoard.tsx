@@ -14,6 +14,7 @@ interface Props {
   localDisplayName:  string;
   isHost:            boolean;
   ranked:            boolean;
+  isCustomRoom?:     boolean;
   onMatchEnd:        (result: MPResult) => void;
   onLeave:           () => void;
 }
@@ -61,7 +62,7 @@ function calcMPRP(
 }
 
 export default function MultiplayerBoard({
-  match, localUsername, localDisplayName, isHost, ranked, onMatchEnd, onLeave,
+  match, localUsername, localDisplayName, isHost, ranked, isCustomRoom, onMatchEnd, onLeave,
 }: Props) {
   const canvasRef      = useRef<HTMLCanvasElement>(null);
   const mobileInputRef = useRef(createMobileInput());
@@ -161,6 +162,12 @@ export default function MultiplayerBoard({
 
   // ─── Ayrıl: forfeit yayınla + sonuç ekranı göster (her iki oyuncuya da) ───
   const handleLeave = useCallback(() => {
+    // Özel oda maçları: sonuç ekranı göstermeden doğrudan ayrıl
+    if (isCustomRoom) {
+      sendForfeit(myTeam);
+      onLeave();
+      return;
+    }
     // Maç zaten bitti ya da işlendi — sadece menüye dön
     if (endHandledRef.current) {
       onLeave();
@@ -170,7 +177,7 @@ export default function MultiplayerBoard({
     sendForfeit(myTeam);
     // Kendi sonuç ekranımızı göster (kaybeden olarak)
     finishGame(scoreRef.current, {}, true, myTeam);
-  }, [sendForfeit, myTeam, finishGame, scoreRef, onLeave]);
+  }, [sendForfeit, myTeam, finishGame, scoreRef, onLeave, isCustomRoom]);
 
   const timeDisplay = ranked ? fmtCountdown(gameTimeMs) : fmtCountup(gameTimeMs);
   const urgent      = ranked && gameTimeMs < 15_000;

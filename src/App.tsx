@@ -39,6 +39,7 @@ export default function App() {
   const [currentMatch,  setCurrentMatch] = useState<MatchSession | null>(null);
   const [currentRoom,   setCurrentRoom]  = useState<CustomRoom | null>(null);
   const [isHost,        setIsHost]       = useState(false);
+  const [isCustomRoom,  setIsCustomRoom] = useState(false);
   const lastSeenTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
   const screenRef       = useRef<AppScreen>("login");
   // isRecoveryRef: şifre sıfırlama linkine tıklanınca true olur.
@@ -201,13 +202,24 @@ export default function App() {
   }, []);
 
   const handleMpMatchEnd = useCallback((result: MPResult) => {
+    // Özel oda maçları: sonuç ekranı gösterme, kaydetme, custom-rooms'a dön
+    if (isCustomRoom) {
+      setCurrentMatch(null);
+      setCurrentRoom(null);
+      setIsCustomRoom(false);
+      setScreen("custom-rooms");
+      return;
+    }
+
     setMpResult(result);
     setCurrentMatch(null);
     setCurrentRoom(null);
     setScreen("mp-result");
 
-    // Maç sonucunu Supabase'e kaydet
-    const { winnerTeam, myTeam, redGoals, blueGoals, rpGained, isRanked,
+    // Sadece ranked maçları Supabase'e kaydet
+    if (!result.isRanked) return;
+
+    const { winnerTeam, myTeam, redGoals, blueGoals, rpGained,
             prevRP, newRP, localUsername: lUser, opponentUsername, playerStats } = result;
     const myGoals  = myTeam === "red" ? redGoals  : blueGoals;
     const oppGoals = myTeam === "red" ? blueGoals : redGoals;
@@ -219,9 +231,9 @@ export default function App() {
       username: lUser, opponentName: oppDisplay,
       playerGoals: myGoals, opponentGoals: oppGoals,
       result: outcome, rpGained, rpBefore: prevRP, rpAfter: newRP,
-      ranked: isRanked,
+      ranked: true,
     }).catch(() => {});
-  }, []);
+  }, [isCustomRoom]);
 
   // ─── Screen render ─────────────────────────────────────────────────────────
 
@@ -332,7 +344,7 @@ export default function App() {
         username={username}
         displayName={displayName}
         onCreateRoom={() => setScreen("create-room")}
-        onJoinRoom={(room) => { setCurrentRoom(room); setScreen("room-lobby"); }}
+        onJoinRoom={(room) => { setCurrentRoom(room); setIsCustomRoom(true); setScreen("room-lobby"); }}
         onBack={() => setScreen("menu")}
       />
     );
@@ -343,7 +355,7 @@ export default function App() {
       <CreateRoomPage
         username={username}
         displayName={displayName}
-        onRoomCreated={(room) => { setCurrentRoom(room); setScreen("room-lobby"); }}
+        onRoomCreated={(room) => { setCurrentRoom(room); setIsCustomRoom(true); setScreen("room-lobby"); }}
         onBack={() => setScreen("custom-rooms")}
       />
     );
@@ -380,8 +392,18 @@ export default function App() {
         localDisplayName={displayName}
         isHost={isHost}
         ranked={currentMatch.ranked}
+        isCustomRoom={isCustomRoom}
         onMatchEnd={handleMpMatchEnd}
-        onLeave={() => { setCurrentMatch(null); setScreen("menu"); }}
+        onLeave={() => {
+          setCurrentMatch(null);
+          if (isCustomRoom) {
+            setCurrentRoom(null);
+            setIsCustomRoom(false);
+            setScreen("custom-rooms");
+          } else {
+            setScreen("menu");
+          }
+        }}
       />
     );
   }
