@@ -471,9 +471,9 @@ export default function LandingPage({ onLogin, onRegister }: Props) {
             <div>
               <h3 className="text-white font-black text-lg mb-1">E-Posta</h3>
               <p className="text-white/40 text-sm mb-3">Her türlü sorun, öneri veya geri bildirim için bize yaz.</p>
-              <a href="mailto:destek@novaball.gg"
+              <a href="mailto:support.novaballofficial@gmail.com"
                 className="inline-flex items-center gap-2 text-[#4af] font-bold text-sm hover:underline">
-                destek@novaball.gg <ArrowRight size={13} />
+                support.novaballofficial@gmail.com <ArrowRight size={13} />
               </a>
             </div>
           </motion.div>
@@ -552,8 +552,8 @@ export default function LandingPage({ onLogin, onRegister }: Props) {
                 {label as string}
               </button>
             ))}
-            <a href="mailto:destek@novaball.gg" className="hover:text-white/60 transition-colors font-semibold">
-              destek@novaball.gg
+            <a href="mailto:support.novaballofficial@gmail.com" className="hover:text-white/60 transition-colors font-semibold">
+              support.novaballofficial@gmail.com
             </a>
           </div>
         </div>
