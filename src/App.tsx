@@ -24,6 +24,7 @@ import MultiplayerResult from "./components/MultiplayerResult";
 import type { AppScreen, MatchResultData, GameMode, MatchSession, CustomRoom, MPResult } from "./types/game";
 import { loadRP, saveRP, getRankForRP, calcRPForWin } from "./utils/rankSystem";
 import { getPlayerByAuthId, createPlayer, updateLastSeen, saveMatch } from "./lib/db";
+import { leaveRoom } from "./lib/matchmaking";
 
 export default function App() {
   const [screen,        setScreen]       = useState<AppScreen>("login");
@@ -204,10 +205,16 @@ export default function App() {
   const handleMpMatchEnd = useCallback((result: MPResult) => {
     // Özel oda maçları: sonuç ekranı gösterme, kaydetme, custom-rooms'a dön
     if (isCustomRoom) {
+      const roomId = currentRoom?.id;
       setCurrentMatch(null);
       setCurrentRoom(null);
       setIsCustomRoom(false);
       setScreen("custom-rooms");
+      // Odayı Supabase'den sil (maç bitti veya biri ayrıldı)
+      if (roomId) {
+        const usr = result.localUsername;
+        leaveRoom(roomId, usr).catch(() => {});
+      }
       return;
     }
 
@@ -395,11 +402,14 @@ export default function App() {
         isCustomRoom={isCustomRoom}
         onMatchEnd={handleMpMatchEnd}
         onLeave={() => {
+          const roomId = currentRoom?.id;
           setCurrentMatch(null);
           if (isCustomRoom) {
             setCurrentRoom(null);
             setIsCustomRoom(false);
             setScreen("custom-rooms");
+            // Odayı Supabase'den sil — rakip subscribeToRoom null aldığında lobiye döner
+            if (roomId) leaveRoom(roomId, username).catch(() => {});
           } else {
             setScreen("menu");
           }

@@ -1,6 +1,5 @@
 import { supabase } from "./supabase";
-import type { GameMode, TeamMember, MatchSession, CustomRoom, RoomStatus, modeFromMaxPlayers } from "../types/game";
-import { modeFromMaxPlayers as modeFromMax } from "../types/game";
+import type { GameMode, TeamMember, MatchSession, CustomRoom, RoomStatus } from "../types/game";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function uuid(): string {

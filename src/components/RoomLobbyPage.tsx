@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Send, MessageCircle, X, Play } from "lucide-react";
+import { ArrowLeft, Send, MessageCircle, X, Play, Users, Crown, Shield } from "lucide-react";
 import type { CustomRoom, ChatMessage, MatchSession, TeamMember } from "../types/game";
 import { modeFromMaxPlayers } from "../types/game";
 import { subscribeToRoom, joinRoomTeam, leaveRoom, startRoom } from "../lib/matchmaking";
@@ -27,10 +27,13 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
   const chatEndRef      = useRef<HTMLDivElement>(null);
   const matchStartedRef = useRef(false);
 
-  const isHost = initialRoom.hostUsername === username;
-  const myTeam = room.redTeam.some(m => m.username === username) ? "red"
-               : room.blueTeam.some(m => m.username === username) ? "blue"
-               : null;
+  const isHost  = initialRoom.hostUsername === username;
+  const myTeam  = room.redTeam.some(m => m.username === username) ? "red"
+                : room.blueTeam.some(m => m.username === username) ? "blue"
+                : null;
+  const maxPerTeam  = Math.floor(room.maxPlayers / 2);
+  const totalPlayers = room.redTeam.length + room.blueTeam.length;
+  const mode        = modeFromMaxPlayers(room.maxPlayers);
 
   const buildMatch = (r: CustomRoom): MatchSession => ({
     id: r.id, mode: modeFromMaxPlayers(r.maxPlayers), channelId: r.channelId,
@@ -41,8 +44,7 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
   useEffect(() => {
     subRef.current = subscribeToRoom(initialRoom.id, updated => {
       if (!updated) {
-        // Oda silindi — host ayrılmış olabilir
-        if (!isHost && !matchStartedRef.current) {
+        if (!matchStartedRef.current) {
           setKicked(true);
           setTimeout(() => onLeave(), 2500);
         }
@@ -68,7 +70,6 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
     ch.subscribe(status => {
       if (status === "SUBSCRIBED") { broadcastChat(ch, joinMsg); setMessages([joinMsg]); }
     });
-
     return () => { subRef.current?.unsubscribe(); ch.unsubscribe(); };
   }, []); // eslint-disable-line
 
@@ -84,7 +85,9 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
   };
 
   const handleSwitchTeam = async (team: "red" | "blue") => {
-    if (team === myTeam) return;
+    if (team === myTeam || switching) return;
+    const targetTeam = team === "red" ? room.redTeam : room.blueTeam;
+    if (targetTeam.length >= maxPerTeam) return;
     setSwitching(true);
     const { room: updated } = await joinRoomTeam(room.id, { username, displayName }, team);
     setSwitching(false);
@@ -125,98 +128,231 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
     );
   }
 
-  const TeamColumn = ({ team, members }: { team: "red" | "blue"; members: TeamMember[] }) => {
-    const color  = team === "red" ? "#e63535" : "#4488ff";
-    const label  = team === "red" ? "🔴 Kırmızı" : "🔵 Mavi";
-    const isMine = myTeam === team;
-    return (
-      <div
-        className="flex-1 flex flex-col gap-3 p-4 rounded-2xl border transition-all"
-        style={{ borderColor: `${color}${isMine ? "55" : "22"}`, background: `${color}${isMine ? "10" : "05"}` }}
-      >
-        <div className="flex items-center justify-between">
-          <span className="font-bold text-sm" style={{ color }}>{label}</span>
-          <span className="text-white/30 text-xs">{members.length}</span>
-        </div>
-        <div className="flex flex-col gap-1.5 min-h-[60px]">
-          {members.map((m, i) => (
-            <div key={m.username} className="flex items-center gap-2">
-              <span
-                className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0"
-                style={{ background: color }}
-              >{i + 1}</span>
-              <span className={`text-xs truncate ${m.username === username ? "text-white font-bold" : "text-white/60"}`}>
-                {m.displayName}{m.username === room.hostUsername && " 👑"}
-              </span>
+  // Slot render helper
+  const renderSlots = (team: "red" | "blue") => {
+    const members = team === "red" ? room.redTeam : room.blueTeam;
+    const color   = team === "red" ? "#e63535" : "#4488ff";
+    const slots: React.JSX.Element[] = [];
+
+    for (let i = 0; i < maxPerTeam; i++) {
+      const m = members[i];
+      if (m) {
+        slots.push(
+          <motion.div
+            key={m.username}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
+            style={{ background: `${color}12`, border: `1px solid ${color}25` }}
+          >
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-black text-xs flex-shrink-0"
+              style={{ background: `${color}40`, border: `1px solid ${color}50` }}
+            >
+              {m.displayName.charAt(0).toUpperCase()}
             </div>
-          ))}
-          {members.length === 0 && <span className="text-white/20 text-xs">Boş</span>}
+            <span className={`text-xs font-semibold truncate flex-1 ${m.username === username ? "text-white" : "text-white/65"}`}>
+              {m.displayName}
+            </span>
+            {m.username === room.hostUsername && (
+              <Crown size={11} className="flex-shrink-0" style={{ color: "#facc15" }} />
+            )}
+          </motion.div>
+        );
+      } else {
+        slots.push(
+          <div
+            key={`empty-${i}`}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
+            style={{ border: `1px dashed ${color}18` }}
+          >
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: `${color}06`, border: `1px dashed ${color}20` }}
+            >
+              <span className="text-white/20 text-xs">+</span>
+            </div>
+            <span className="text-white/18 text-xs italic">Boş slot</span>
+          </div>
+        );
+      }
+    }
+    return slots;
+  };
+
+  const TeamCard = ({ team }: { team: "red" | "blue" }) => {
+    const members    = team === "red" ? room.redTeam : room.blueTeam;
+    const color      = team === "red" ? "#e63535" : "#4488ff";
+    const label      = team === "red" ? "Kırmızı" : "Mavi";
+    const emoji      = team === "red" ? "🔴" : "🔵";
+    const isMine     = myTeam === team;
+    const isFull     = members.length >= maxPerTeam;
+    const canJoin    = !isMine && !isFull && !switching;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+        className="flex-1 flex flex-col gap-2 rounded-2xl p-3 relative overflow-hidden"
+        style={{
+          background: isMine ? `${color}10` : `${color}05`,
+          border: `1px solid ${color}${isMine ? "35" : "18"}`,
+          boxShadow: isMine ? `0 0 20px ${color}15` : "none",
+        }}
+      >
+        {/* Subtle glow if current team */}
+        {isMine && (
+          <div
+            className="absolute inset-0 pointer-events-none rounded-2xl"
+            style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}10 0%, transparent 70%)` }}
+          />
+        )}
+
+        {/* Header */}
+        <div className="flex items-center justify-between relative z-10">
+          <div className="flex items-center gap-1.5">
+            <span className="text-base leading-none">{emoji}</span>
+            <span className="font-black text-sm" style={{ color }}>{label}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-white/25 text-xs">{members.length}</span>
+            <span className="text-white/15 text-xs">/</span>
+            <span className="text-white/40 text-xs">{maxPerTeam}</span>
+          </div>
         </div>
+
+        {/* Slotlar */}
+        <div className="flex flex-col gap-1 relative z-10">
+          {renderSlots(team)}
+        </div>
+
+        {/* Katıl / Bu Takımdasın butonu */}
         <motion.button
-          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-          onClick={() => handleSwitchTeam(team)}
-          disabled={isMine || switching}
-          className="w-full py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-40"
-          style={{ background: `${color}${isMine ? "25" : "10"}`, border: `1px solid ${color}${isMine ? "40" : "22"}`, color }}
+          whileHover={canJoin ? { scale: 1.02 } : {}}
+          whileTap={canJoin ? { scale: 0.97 } : {}}
+          onClick={() => canJoin && handleSwitchTeam(team)}
+          disabled={!canJoin}
+          className="mt-auto py-2.5 rounded-xl text-xs font-black transition-all relative z-10"
+          style={
+            isMine
+              ? { background: `${color}20`, color, border: `1px solid ${color}35`, cursor: "default" }
+              : isFull
+              ? { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.08)", cursor: "not-allowed" }
+              : { background: `${color}18`, color, border: `1px solid ${color}35`, cursor: "pointer" }
+          }
         >
-          {isMine ? "✓ Bu Takımdasın" : "Katıl"}
+          {isMine ? `✓ Bu Takımdasın` : isFull ? "Takım Dolu" : switching ? "…" : `${label}'ya Katıl`}
         </motion.button>
-      </div>
+      </motion.div>
     );
   };
 
+  const canStart = isHost && room.redTeam.length > 0 && room.blueTeam.length > 0;
+
   return (
     <div className="novaball-screen flex flex-col min-h-[100dvh] bg-[#070d16] relative overflow-hidden">
-      <div className="pitch-glow" />
-      <div className="relative z-10 flex flex-col w-full max-w-lg mx-auto px-4 py-6 gap-4 h-full">
+      <div className="pitch-glow pointer-events-none" />
 
-        {/* Üst bar */}
-        <div className="flex items-center justify-between">
-          <button onClick={handleLeave}
-            className="flex items-center gap-1.5 text-[#f87171]/70 hover:text-[#f87171] transition-colors text-sm font-semibold">
-            <ArrowLeft size={14} /> Odadan Ayrıl
+      <div className="relative z-10 flex flex-col w-full max-w-lg mx-auto px-4 py-5 gap-4 h-full min-h-[100dvh]">
+
+        {/* ── Üst bar ── */}
+        <div className="flex items-start justify-between">
+          <button
+            onClick={handleLeave}
+            className="flex items-center gap-1.5 text-[#f87171]/60 hover:text-[#f87171] transition-colors text-sm font-semibold"
+          >
+            <ArrowLeft size={14} /> Ayrıl
           </button>
-          <div className="flex flex-col items-end">
-            <span className="text-white font-bold text-sm truncate max-w-[160px]">{room.name}</span>
-            <span className="text-white/30 text-xs">
-              {room.redTeam.length + room.blueTeam.length}/{room.maxPlayers} oyuncu · Serbest Maç
-            </span>
+
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="text-white font-black text-base truncate max-w-[180px] leading-tight">{room.name}</span>
+            <div className="flex items-center gap-2">
+              <span
+                className="text-[10px] font-black px-2 py-0.5 rounded-full"
+                style={{ background: "rgba(167,139,250,0.15)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.25)" }}
+              >
+                {mode}
+              </span>
+              <span className="text-white/25 text-[11px]">Serbest Maç</span>
+            </div>
           </div>
         </div>
 
-        {/* Takımlar */}
-        <div className="flex gap-3">
-          <TeamColumn team="red"  members={room.redTeam}  />
-          <TeamColumn team="blue" members={room.blueTeam} />
+        {/* ── Oyuncu sayacı ── */}
+        <div
+          className="flex items-center justify-between px-4 py-2.5 rounded-xl"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          <div className="flex items-center gap-2 text-white/40">
+            <Users size={13} />
+            <span className="text-xs font-semibold">Oyuncular</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-white font-black text-sm">{totalPlayers}</span>
+            <span className="text-white/25 text-xs">/ {room.maxPlayers}</span>
+            {/* Mini progress */}
+            <div className="w-16 h-1.5 rounded-full overflow-hidden ml-1" style={{ background: "rgba(255,255,255,0.08)" }}>
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${(totalPlayers / room.maxPlayers) * 100}%`,
+                  background: totalPlayers === room.maxPlayers ? "#4ade80" : "rgba(167,139,250,0.7)",
+                }}
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Başlat / Bekle */}
+        {/* ── Takım kartları ── */}
+        <div className="flex gap-3 flex-1">
+          <TeamCard team="red" />
+          <TeamCard team="blue" />
+        </div>
+
+        {/* ── Başlat / Bekle ── */}
         {isHost ? (
           <motion.button
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+            whileHover={canStart ? { scale: 1.02 } : {}}
+            whileTap={canStart ? { scale: 0.97 } : {}}
             onClick={handleStartMatch}
-            disabled={room.redTeam.length === 0 || room.blueTeam.length === 0}
+            disabled={!canStart}
             className="w-full py-4 rounded-2xl font-black text-base text-white transition-all disabled:opacity-30 flex items-center justify-center gap-2"
-            style={{ background: "linear-gradient(135deg,#6d28d9,#a78bfa)" }}
+            style={{ background: canStart ? "linear-gradient(135deg,#6d28d9,#a78bfa)" : "rgba(255,255,255,0.06)" }}
           >
-            <Play size={16} /> Maçı Başlat
+            <Play size={16} />
+            {canStart ? "Maçı Başlat" : "Her iki takımda oyuncu olmalı"}
           </motion.button>
         ) : (
-          <div className="w-full py-3 rounded-2xl text-center text-white/30 text-sm border border-white/8 bg-white/3">
-            👑 Oda sahibinin maçı başlatması bekleniyor…
+          <div
+            className="w-full py-3.5 rounded-2xl text-center text-sm border"
+            style={{ color: "rgba(255,255,255,0.3)", borderColor: "rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}
+          >
+            <Shield size={13} className="inline mr-1.5 opacity-50" />
+            Oda sahibinin maçı başlatması bekleniyor…
           </div>
         )}
 
-        {/* Sohbet */}
+        {/* ── Sohbet toggle ── */}
         <div className="flex flex-col">
           <button
             onClick={() => setChatOpen(o => !o)}
-            className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-white/10 bg-white/3 hover:bg-white/6 transition-all"
+            className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-white/8 bg-white/3 hover:bg-white/6 transition-all"
           >
-            <div className="flex items-center gap-2 text-white/60 text-sm font-semibold">
-              <MessageCircle size={14} /> Sohbet
+            <div className="flex items-center gap-2 text-white/50 text-sm font-semibold">
+              <MessageCircle size={13} />
+              <span>Sohbet</span>
+              {messages.filter(m => m.type === "user").length > 0 && (
+                <span
+                  className="text-[10px] font-black px-1.5 py-0.5 rounded-full"
+                  style={{ background: "rgba(167,139,250,0.2)", color: "#a78bfa" }}
+                >
+                  {messages.filter(m => m.type === "user").length}
+                </span>
+              )}
             </div>
-            {chatOpen ? <X size={14} className="text-white/30" /> : <span className="text-white/30 text-xs">Aç →</span>}
+            {chatOpen
+              ? <X size={13} className="text-white/25" />
+              : <span className="text-white/20 text-xs">Aç →</span>
+            }
           </button>
 
           <AnimatePresence>
@@ -226,30 +362,35 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
                 exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="border border-t-0 border-white/10 rounded-b-xl bg-black/20 flex flex-col">
-                  <div className="flex flex-col gap-1 p-3 max-h-36 overflow-y-auto">
+                <div
+                  className="flex flex-col border border-t-0 rounded-b-xl"
+                  style={{ borderColor: "rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.25)" }}
+                >
+                  <div className="flex flex-col gap-1 p-3 max-h-32 overflow-y-auto">
                     {messages.map(msg => (
-                      <div key={msg.id} className={`text-xs ${msg.type === "system" ? "text-[#facc15]/60 italic" : ""}`}>
+                      <div key={msg.id} className={`text-xs ${msg.type === "system" ? "text-[#facc15]/55 italic" : ""}`}>
                         {msg.type === "user" && (
-                          <span className={`font-bold mr-1 ${msg.username === username ? "text-[#4af]" : "text-white/60"}`}>
+                          <span className={`font-bold mr-1 ${msg.username === username ? "text-[#4af]" : "text-white/55"}`}>
                             {msg.displayName}:
                           </span>
                         )}
-                        <span className={msg.type === "user" ? "text-white/75" : ""}>{msg.text}</span>
+                        <span className={msg.type === "user" ? "text-white/70" : ""}>{msg.text}</span>
                       </div>
                     ))}
                     <div ref={chatEndRef} />
                   </div>
-                  <div className="flex gap-2 p-2 border-t border-white/8">
+                  <div className="flex gap-2 p-2 border-t border-white/6">
                     <input
                       type="text" value={inputText}
                       onChange={e => setInputText(e.target.value)}
                       onKeyDown={e => e.key === "Enter" && sendMessage()}
                       placeholder="Mesaj yaz…" maxLength={100}
-                      className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs placeholder-white/25 outline-none focus:border-[#a78bfa]/40 transition-all"
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs placeholder-white/20 outline-none focus:border-[#a78bfa]/40 transition-all"
                     />
-                    <button onClick={sendMessage}
-                      className="px-3 py-1.5 rounded-lg bg-[#a78bfa]/15 border border-[#a78bfa]/25 text-[#a78bfa] hover:bg-[#a78bfa]/25 transition-all">
+                    <button
+                      onClick={sendMessage}
+                      className="px-3 py-1.5 rounded-lg bg-[#a78bfa]/12 border border-[#a78bfa]/22 text-[#a78bfa] hover:bg-[#a78bfa]/22 transition-all"
+                    >
                       <Send size={12} />
                     </button>
                   </div>
