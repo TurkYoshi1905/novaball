@@ -412,3 +412,4 @@ CREATE POLICY "custom_rooms_delete_host"   ON public.custom_rooms FOR DELETE
 --      custom_rooms + players + match_history tablolarını etkinleştirin.
 -- 7. Eski odaları temizlemek için: SELECT public.cleanup_stale_rooms();
 -- 8. migration 002 ve 003 bu dosyaya dahil edildi — artık ayrıca çalıştırmanız gerekmez.
+-- 9. migration 004 (mid-match join) ayrı dosyada: 20260614_004_mid_match_join.sql

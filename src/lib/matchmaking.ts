@@ -180,7 +180,7 @@ export async function listRooms(): Promise<CustomRoom[]> {
   const { data } = await supabase
     .from("custom_rooms")
     .select("*")
-    .eq("status", "waiting")
+    .in("status", ["waiting", "playing"])
     .order("created_at", { ascending: false });
   return ((data ?? []) as Record<string, unknown>[]).map(rowToRoom);
 }
