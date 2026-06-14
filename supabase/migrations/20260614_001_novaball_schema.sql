@@ -1,7 +1,9 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- NovaBall — Supabase Schema Migration
 -- Dosya: 20260614_001_novaball_schema.sql
--- Açıklama: Tam şema tanımı (players, match_history, custom_rooms, rpc'ler)
+-- Açıklama: Tam şema tanımı
+--   players, match_history, matchmaking_queue, active_matches, custom_rooms
+--   + RPC'ler, RLS politikaları, indexler, tetikleyiciler
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- ─── Uzantılar ────────────────────────────────────────────────────────────────
@@ -66,6 +68,45 @@ CREATE INDEX IF NOT EXISTS idx_match_history_played_at
 CREATE INDEX IF NOT EXISTS idx_match_history_ranked
   ON public.match_history(ranked);
 
+-- ─── matchmaking_queue tablosu ───────────────────────────────────────────────
+-- Eşleşme bekleyen oyuncular. Her oyuncunun tek kaydı bulunur.
+CREATE TABLE IF NOT EXISTS public.matchmaking_queue (
+  username     TEXT         PRIMARY KEY REFERENCES public.players(username) ON DELETE CASCADE,
+  display_name TEXT         NOT NULL,
+  game_mode    TEXT         NOT NULL CHECK (game_mode IN ('1v1','2v2','3v3','4v4','5v5')),
+  status       TEXT         NOT NULL DEFAULT 'searching'
+               CHECK (status IN ('searching','matched','cancelled')),
+  match_id     TEXT,
+  joined_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_matchmaking_queue_mode_status
+  ON public.matchmaking_queue(game_mode, status);
+
+CREATE INDEX IF NOT EXISTS idx_matchmaking_queue_joined_at
+  ON public.matchmaking_queue(joined_at ASC);
+
+-- ─── active_matches tablosu ──────────────────────────────────────────────────
+-- Devam eden ve yeni başlayan ranked/unranked matchmaking maçları.
+CREATE TABLE IF NOT EXISTS public.active_matches (
+  id            UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+  mode          TEXT         NOT NULL CHECK (mode IN ('1v1','2v2','3v3','4v4','5v5')),
+  host_username TEXT         NOT NULL REFERENCES public.players(username) ON DELETE CASCADE,
+  red_team      JSONB        NOT NULL DEFAULT '[]',
+  blue_team     JSONB        NOT NULL DEFAULT '[]',
+  status        TEXT         NOT NULL DEFAULT 'starting'
+               CHECK (status IN ('waiting','starting','playing','finished')),
+  channel_id    TEXT         NOT NULL UNIQUE,
+  ranked        BOOLEAN      NOT NULL DEFAULT TRUE,
+  created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_active_matches_status
+  ON public.active_matches(status);
+
+CREATE INDEX IF NOT EXISTS idx_active_matches_host
+  ON public.active_matches(host_username);
+
 -- ─── custom_rooms tablosu ─────────────────────────────────────────────────────
 -- Özel oda bilgilerini geçici olarak tutar (Realtime sync için).
 CREATE TABLE IF NOT EXISTS public.custom_rooms (
@@ -127,9 +168,11 @@ END;
 $$;
 
 -- ─── Row Level Security (RLS) ─────────────────────────────────────────────────
-ALTER TABLE public.players      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.match_history ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.custom_rooms  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.players            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.match_history      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matchmaking_queue  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.active_matches     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.custom_rooms       ENABLE ROW LEVEL SECURITY;
 
 -- players: herkes okuyabilir, sadece kendi kaydını güncelleyebilir
 DROP POLICY IF EXISTS "players_select_public"  ON public.players;
@@ -159,6 +202,84 @@ CREATE POLICY "match_history_insert_own"
   ON public.match_history FOR INSERT
   WITH CHECK (
     player_username IN (
+      SELECT username FROM public.players WHERE auth_id = auth.uid()
+    )
+  );
+
+-- matchmaking_queue: herkes okuyabilir; kendi kaydını ekleyebilir/silebilir/güncelleyebilir
+DROP POLICY IF EXISTS "queue_select_public"  ON public.matchmaking_queue;
+DROP POLICY IF EXISTS "queue_insert_own"     ON public.matchmaking_queue;
+DROP POLICY IF EXISTS "queue_update_own"     ON public.matchmaking_queue;
+DROP POLICY IF EXISTS "queue_delete_own"     ON public.matchmaking_queue;
+
+CREATE POLICY "queue_select_public"
+  ON public.matchmaking_queue FOR SELECT USING (true);
+
+CREATE POLICY "queue_insert_own"
+  ON public.matchmaking_queue FOR INSERT
+  WITH CHECK (
+    username IN (
+      SELECT username FROM public.players WHERE auth_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "queue_update_own"
+  ON public.matchmaking_queue FOR UPDATE
+  USING (
+    username IN (
+      SELECT username FROM public.players WHERE auth_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    -- username değiştirilemez; yalnızca status/match_id alanları güncellenebilir
+    username IN (
+      SELECT username FROM public.players WHERE auth_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "queue_delete_own"
+  ON public.matchmaking_queue FOR DELETE
+  USING (
+    username IN (
+      SELECT username FROM public.players WHERE auth_id = auth.uid()
+    )
+  );
+
+-- active_matches: herkes okuyabilir; host oluşturabilir/güncelleyebilir/silebilir
+DROP POLICY IF EXISTS "active_matches_select_public"  ON public.active_matches;
+DROP POLICY IF EXISTS "active_matches_insert_host"    ON public.active_matches;
+DROP POLICY IF EXISTS "active_matches_update_host"    ON public.active_matches;
+DROP POLICY IF EXISTS "active_matches_delete_host"    ON public.active_matches;
+
+CREATE POLICY "active_matches_select_public"
+  ON public.active_matches FOR SELECT USING (true);
+
+CREATE POLICY "active_matches_insert_host"
+  ON public.active_matches FOR INSERT
+  WITH CHECK (
+    host_username IN (
+      SELECT username FROM public.players WHERE auth_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "active_matches_update_host"
+  ON public.active_matches FOR UPDATE
+  USING (
+    host_username IN (
+      SELECT username FROM public.players WHERE auth_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    -- host_username değiştirilemez
+    host_username IN (
+      SELECT username FROM public.players WHERE auth_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "active_matches_delete_host"
+  ON public.active_matches FOR DELETE
+  USING (
+    host_username IN (
       SELECT username FROM public.players WHERE auth_id = auth.uid()
     )
   );
