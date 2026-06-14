@@ -105,7 +105,7 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
   const handleStartMatch = async () => {
     if (matchStartedRef.current) return;
     matchStartedRef.current = true;
-    await startRoom(room.id);
+    await startRoom(room.id, username);
     onStartMatch(buildMatch(room));
   };
 

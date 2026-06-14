@@ -163,7 +163,131 @@ CREATE POLICY "match_history_insert_own"
     )
   );
 
--- custom_rooms: herkes okuyabilir, host oluşturabilir/güncelleyebilir/silebilir
+-- ─── RPC: room_join_team ──────────────────────────────────────────────────────
+-- Kimliği doğrulanmış herhangi bir oyuncunun takıma katılmasını sağlar.
+-- SECURITY DEFINER: RLS bypass eder, içeride doğrulama yapar.
+-- Doğrudan tablo UPDATE'e gerek kalmaz — yetkisiz alan değişikliği önlenir.
+CREATE OR REPLACE FUNCTION public.room_join_team(
+  p_room_id   UUID,
+  p_username  TEXT,
+  p_display_name TEXT,
+  p_team      TEXT   -- 'red' veya 'blue'
+) RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_room      RECORD;
+  v_member    JSONB;
+  v_new_red   JSONB;
+  v_new_blue  JSONB;
+  v_total     INTEGER;
+BEGIN
+  -- Çağıran kullanıcıyı doğrula
+  IF NOT EXISTS (
+    SELECT 1 FROM public.players WHERE username = p_username AND auth_id = auth.uid()
+  ) THEN
+    RAISE EXCEPTION 'Yetkisiz işlem: kullanıcı doğrulanamadı.';
+  END IF;
+
+  IF p_team NOT IN ('red', 'blue') THEN
+    RAISE EXCEPTION 'Geçersiz takım: %. red veya blue olmalıdır.', p_team;
+  END IF;
+
+  SELECT * INTO v_room FROM public.custom_rooms WHERE id = p_room_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Oda bulunamadı: %', p_room_id;
+  END IF;
+  IF v_room.status <> 'waiting' THEN
+    RAISE EXCEPTION 'Oda artık katılıma açık değil (durum: %).', v_room.status;
+  END IF;
+
+  v_total := jsonb_array_length(v_room.red_team) + jsonb_array_length(v_room.blue_team);
+  IF v_total >= v_room.max_players THEN
+    RAISE EXCEPTION 'Oda dolu (%/% oyuncu).', v_total, v_room.max_players;
+  END IF;
+
+  -- Kullanıcıyı her iki takımdan çıkar
+  v_new_red  := (SELECT jsonb_agg(e) FROM jsonb_array_elements(v_room.red_team)  e WHERE e->>'username' <> p_username);
+  v_new_blue := (SELECT jsonb_agg(e) FROM jsonb_array_elements(v_room.blue_team) e WHERE e->>'username' <> p_username);
+  v_new_red  := COALESCE(v_new_red,  '[]'::JSONB);
+  v_new_blue := COALESCE(v_new_blue, '[]'::JSONB);
+
+  v_member := jsonb_build_object('username', p_username, 'displayName', p_display_name);
+  IF p_team = 'red'  THEN v_new_red  := v_new_red  || jsonb_build_array(v_member);
+  ELSE                    v_new_blue := v_new_blue || jsonb_build_array(v_member);
+  END IF;
+
+  UPDATE public.custom_rooms
+  SET red_team = v_new_red, blue_team = v_new_blue
+  WHERE id = p_room_id;
+
+  RETURN jsonb_build_object('red_team', v_new_red, 'blue_team', v_new_blue);
+END;
+$$;
+
+-- ─── RPC: room_leave ──────────────────────────────────────────────────────────
+-- Oyuncunun odadan ayrılmasını sağlar. Host ayrılırsa oda silinir.
+CREATE OR REPLACE FUNCTION public.room_leave(
+  p_room_id  UUID,
+  p_username TEXT
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_room     RECORD;
+  v_new_red  JSONB;
+  v_new_blue JSONB;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.players WHERE username = p_username AND auth_id = auth.uid()
+  ) THEN
+    RAISE EXCEPTION 'Yetkisiz işlem: kullanıcı doğrulanamadı.';
+  END IF;
+
+  SELECT * INTO v_room FROM public.custom_rooms WHERE id = p_room_id;
+  IF NOT FOUND THEN RETURN; END IF;
+
+  -- Host ayrılıyorsa odayı sil
+  IF v_room.host_username = p_username THEN
+    DELETE FROM public.custom_rooms WHERE id = p_room_id;
+    RETURN;
+  END IF;
+
+  v_new_red  := COALESCE((SELECT jsonb_agg(e) FROM jsonb_array_elements(v_room.red_team)  e WHERE e->>'username' <> p_username), '[]'::JSONB);
+  v_new_blue := COALESCE((SELECT jsonb_agg(e) FROM jsonb_array_elements(v_room.blue_team) e WHERE e->>'username' <> p_username), '[]'::JSONB);
+
+  -- Odada kimse kalmadıysa sil
+  IF jsonb_array_length(v_new_red) + jsonb_array_length(v_new_blue) = 0 THEN
+    DELETE FROM public.custom_rooms WHERE id = p_room_id;
+  ELSE
+    UPDATE public.custom_rooms SET red_team = v_new_red, blue_team = v_new_blue WHERE id = p_room_id;
+  END IF;
+END;
+$$;
+
+-- ─── RPC: room_start ──────────────────────────────────────────────────────────
+-- Sadece host maçı başlatabilir (status → playing).
+CREATE OR REPLACE FUNCTION public.room_start(
+  p_room_id  UUID,
+  p_username TEXT
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_room RECORD;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.players WHERE username = p_username AND auth_id = auth.uid()
+  ) THEN
+    RAISE EXCEPTION 'Yetkisiz işlem: kullanıcı doğrulanamadı.';
+  END IF;
+
+  SELECT * INTO v_room FROM public.custom_rooms WHERE id = p_room_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Oda bulunamadı.'; END IF;
+  IF v_room.host_username <> p_username THEN RAISE EXCEPTION 'Sadece oda sahibi maçı başlatabilir.'; END IF;
+  IF v_room.status <> 'waiting' THEN RAISE EXCEPTION 'Oda zaten başladı (durum: %).', v_room.status; END IF;
+
+  UPDATE public.custom_rooms SET status = 'playing' WHERE id = p_room_id;
+END;
+$$;
+
+-- ─── custom_rooms RLS ─────────────────────────────────────────────────────────
+-- Tüm değişiklik işlemleri (takım katılım/ayrılma/başlatma) SECURITY DEFINER
+-- RPC'ler üzerinden yapılır. Doğrudan UPDATE yalnızca oda sahibine açıktır.
 DROP POLICY IF EXISTS "custom_rooms_select_public" ON public.custom_rooms;
 DROP POLICY IF EXISTS "custom_rooms_insert_host"   ON public.custom_rooms;
 DROP POLICY IF EXISTS "custom_rooms_update_host"   ON public.custom_rooms;
@@ -180,9 +304,22 @@ CREATE POLICY "custom_rooms_insert_host"
     )
   );
 
+-- Doğrudan UPDATE yalnızca oda sahibine izin verilir.
+-- Katılımcı işlemleri (takım değişimi, ayrılma) → room_join_team / room_leave RPC'leri.
+-- host_username değiştirilmesi WITH CHECK ile engellenir.
 CREATE POLICY "custom_rooms_update_host"
   ON public.custom_rooms FOR UPDATE
-  USING (true);
+  USING (
+    host_username IN (
+      SELECT username FROM public.players WHERE auth_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    -- host_username başka bir kullanıcıya devredilemez
+    host_username IN (
+      SELECT username FROM public.players WHERE auth_id = auth.uid()
+    )
+  );
 
 CREATE POLICY "custom_rooms_delete_host"
   ON public.custom_rooms FOR DELETE

@@ -200,48 +200,40 @@ export async function joinRoomTeam(
   member: TeamMember,
   team: "red" | "blue"
 ): Promise<{ room: CustomRoom | null; error: string | null }> {
+  // SECURITY DEFINER RPC — doğrudan tablo UPDATE yerine sunucu tarafı doğrulama
+  const { data, error } = await supabase.rpc("room_join_team", {
+    p_room_id:      roomId,
+    p_username:     member.username,
+    p_display_name: member.displayName,
+    p_team:         team,
+  });
+  if (error) return { room: null, error: error.message };
+  // RPC güncel takımları döndürür; tam oda verisini yeniden çek
   const room = await getRoom(roomId);
   if (!room) return { room: null, error: "Oda bulunamadı" };
-
-  const totalInRoom = room.redTeam.length + room.blueTeam.length;
-  if (totalInRoom >= room.maxPlayers) return { room: null, error: "Oda dolu" };
-
-  // Remove from both teams first
-  const newRed  = room.redTeam.filter(m => m.username !== member.username);
-  const newBlue = room.blueTeam.filter(m => m.username !== member.username);
-  if (team === "red")  newRed.push(member);
-  else                 newBlue.push(member);
-
-  const { data, error } = await supabase
-    .from("custom_rooms")
-    .update({ red_team: newRed, blue_team: newBlue })
-    .eq("id", roomId)
-    .select()
-    .single();
-
-  if (error || !data) return { room: null, error: error?.message ?? "Takım değiştirilemedi" };
-  return { room: rowToRoom(data as Record<string, unknown>), error: null };
+  // RPC'den dönen değerle takımları eşitle
+  const updated: CustomRoom = {
+    ...room,
+    redTeam:  (data?.red_team  as TeamMember[]) ?? room.redTeam,
+    blueTeam: (data?.blue_team as TeamMember[]) ?? room.blueTeam,
+  };
+  return { room: updated, error: null };
 }
 
 export async function leaveRoom(roomId: string, username: string): Promise<void> {
-  const room = await getRoom(roomId);
-  if (!room) return;
-  const newRed  = room.redTeam.filter(m => m.username !== username);
-  const newBlue = room.blueTeam.filter(m => m.username !== username);
-  const totalLeft = newRed.length + newBlue.length;
-
-  if (totalLeft === 0 || room.hostUsername === username) {
-    await supabase.from("custom_rooms").delete().eq("id", roomId);
-  } else {
-    await supabase
-      .from("custom_rooms")
-      .update({ red_team: newRed, blue_team: newBlue })
-      .eq("id", roomId);
-  }
+  // SECURITY DEFINER RPC — host ayrılırsa oda silinir, değilse takımdan çıkarılır
+  await supabase.rpc("room_leave", {
+    p_room_id:  roomId,
+    p_username: username,
+  });
 }
 
-export async function startRoom(roomId: string): Promise<void> {
-  await supabase.from("custom_rooms").update({ status: "playing" }).eq("id", roomId);
+export async function startRoom(roomId: string, hostUsername: string): Promise<void> {
+  // SECURITY DEFINER RPC — yalnızca host başlatabilir
+  await supabase.rpc("room_start", {
+    p_room_id:  roomId,
+    p_username: hostUsername,
+  });
 }
 
 export function subscribeToRooms(
