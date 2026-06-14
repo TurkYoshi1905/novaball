@@ -215,27 +215,39 @@ bash github-sync.sh push "NovaBall: güncelleme"
 
 ## Sürüm Geçmişi
 
-### v0.0.6 — HaxBall Tarzı Özel Odalar (14 Haziran 2026)
+### v0.0.6 — Premium Landing Page, Maça Katılım & HaxBall Özel Odalar (14 Haziran 2026)
 
-> Özel odalar tamamen yenilendi: format seçimi, premium lobi, oda boşaltma.
+> Yeni kullanıcılar için tam ekran premium karşılama sayfası, devam eden maçlara mid-match katılım, host tek başına maç başlatma ve HaxBall tarzı format seçimi ile lobi yenileme.
 
-#### 🎮 Özel Oda Sistemi
-- **Format seçimi**: 1v1 / 2v2 / 3v3 / 4v4 / 5v5 butonu ile oda oluşturma (HaxBall gibi)
-- **Premium lobi**: Kırmızı/Mavi takım kolonları, oyuncu slotları, katıl/değiştir butonları
-- **Dinamik slot sayısı**: Her takım maks `maxPlayers / 2` oyuncu gösterir
-- **Oda boşaltma**: Herhangi bir oyuncu maçtan çıkınca `room_leave` RPC ile oda silinir
-- **Özel maç sonucu**: MultiplayerResult ekranı gösterilmez, direkt custom-rooms'a dönülür
-- **Maç geçmişine kaydedilmez**: Özel maçlar profil istatistiklerini etkilemez
+#### 🌐 Premium Karşılama Sayfası (LandingPage)
+- **Animasyonlu hero**: Yüzen top efekti, scroll-aware cam navbar, "Hemen Oyna" ve "Giriş Yap" CTA butonları
+- **Özellikler bölümü**: 6 kart — Gerçek Zamanlı Çok Oyunculu, Rank Sistemi, Özel Odalar, Mobil, AI Modu, Tarayıcı Tabanlı
+- **Oyun modları bölümü**: 1v1–5v5 emoji kartları + özel oda tanıtım bandı
+- **Rank sistemi bölümü**: 7 kademe (⚙️→🏆), RP aralıkları, kural kartları
+- **Destek bölümü**: `support.novaballofficial@gmail.com` e-posta kartı + 5 madde SSS accordion
+- **"Nasıl Oynanır"**: 4 adımlı animasyonlu kılavuz
+- Oturumsuz kullanıcı artık `login` yerine `landing` ile karşılanır; giriş/çıkış akışı güncellendi
 
-#### 🎨 Profil Sayfası Redesign
-- Rank rengine duyarlı dinamik arka plan, hero kartı, animated RP progress bar
-- İstatistikler / Maç Geçmişi tabbed layout, segmented win rate bar
-- Sadece ranked maçlar listeleniyor
+#### 🎮 HaxBall Tarzı Özel Oda Sistemi
+- **Format seçimi**: Oda oluştururken 1v1 / 2v2 / 3v3 / 4v4 / 5v5 butonuyla oyuncu sayısı seçimi
+- **Premium lobi**: Kırmızı/Mavi iki takım kolonu, dolu/boş oyuncu slotları, takım değiştirme butonu, animasyonlu kartlar
+- **Sohbet paneli**: Lobi içine entegre, collapsible, mesaj sayacı rozeti
+- **Oyuncu sayacı**: Anlık toplam/max gösterge ve doluluk barı
 
-#### 🔒 Güvenlik: Supabase RLS Düzeltmesi
-- `custom_rooms` UPDATE politikası düzeltildi (USING true → host-only)
-- SECURITY DEFINER RPC'ler: `room_join_team`, `room_leave`, `room_start`
-- `matchmaking_queue` ve `active_matches` tabloları migration'a eklendi
+#### ⚡ Maça Devam Eden Odaya Katılım (Mid-Match Join)
+- **Host tek başına başlatabilir**: Minimum oyuncu şartı kaldırıldı — solo pratik desteği
+- **CANLI etiket**: Devam eden odalar listede `⚡ CANLI` etiketiyle ayrı bölümde gösterilir
+- **Takım seçim ekranı**: Devam eden odaya giren oyuncu Kırmızı / Mavi seçimi yapar
+- **Direkt maça yönlendirme**: Takım seçilince lobi beklenmeden `MultiplayerBoard`'a geçilir
+- **Oda yönetimi**: HOST çıkarsa oda silinir · GUEST çıkarsa sadece slot boşalır · her iki takım da boşalırsa oda temizlenir
+
+#### 🔒 Güvenlik & Veritabanı
+- `room_join_team` RPC: `'waiting'` durumuna ek olarak `'playing'` durumundaki odaya katılım desteklendi
+- `custom_rooms UPDATE` RLS politikası düzeltildi (`USING true` → host-only doğrulama)
+- `custom_rooms` tablosundan `ranked` kolonu kaldırıldı — özel odalar her zaman serbest
+- `validate_room_teams` trigger: takım boyutunu INSERT/UPDATE anında veritabanı seviyesinde denetler
+- Master şema (`001`): `CREATE OR REPLACE` / `IF NOT EXISTS` ile idempotent, güvenle yeniden çalıştırılabilir
+- `migration 004`: mid-match join için `room_join_team` RPC güncellemesi ayrı dosyada
 
 ---
 

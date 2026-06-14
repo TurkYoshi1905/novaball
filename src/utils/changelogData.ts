@@ -16,6 +16,46 @@ export interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.0.6",
+    date: "14 Haziran 2026",
+    label: "minor",
+    title: "Premium Karşılama Sayfası, HaxBall Tarzı Özel Odalar & Maça Katılım",
+    description:
+      "NovaBall v0.0.6; yeni kullanıcılar için tam ekran premium landing page, HaxBall'a özgü format seçimi ve lüks lobi arayüzüyle yeniden tasarlanan özel oda sistemi, oyun devam ederken odaya katılım desteği ve host'un tek başına maç başlatabilmesini içeriyor. Supabase RLS güvenlik açıkları kapatıldı ve tüm şema SECURITY DEFINER RPC'lerle sağlamlaştırıldı.",
+    changes: [
+      // Landing Page
+      { type: "feature", text: "Premium karşılama sayfası (LandingPage): animasyonlu hero bölümü, yüzen top efekti, scroll-aware cam navbar ve büyük CTA butonları" },
+      { type: "feature", text: "Özellikler bölümü: 6 kart — Gerçek Zamanlı Çok Oyunculu, Rank Sistemi, Özel Odalar, Mobil Destek, AI Modu, Tarayıcı Tabanlı" },
+      { type: "feature", text: "Oyun modları bölümü: 1v1'den 5v5'e emoji kartları + Özel Oda tanıtım bandı" },
+      { type: "feature", text: "Rank sistemi bölümü: 7 kademe (⚙️→🏆), RP aralıkları ve kural kartları (RP Kazan / Rank Atla / Kayıp Yok)" },
+      { type: "feature", text: "Destek bölümü: support.novaballofficial@gmail.com e-posta kartı + 5 madde SSS accordion" },
+      { type: "feature", text: "'Nasıl Oynanır' bölümü: 4 adımlı animasyonlu kılavuz kartları" },
+      { type: "design", text: "Giriş Yap / Kayıt Ol CTA butonları hem navbar'da hem hero'da hem footer'da — yeni kullanıcı akışı optimize edildi" },
+      { type: "improvement", text: "Oturumsuz kullanıcı artık doğrudan login yerine landing page ile karşılanır; giriş/çıkış akışı güncellendi" },
+      // Özel Odalar — Format Seçimi & Lobi Yenileme
+      { type: "feature", text: "Format seçimi: Oda oluştururken 1v1 / 2v2 / 3v3 / 4v4 / 5v5 butonuyla oynayacak kişi sayısı seçimi (HaxBall standardı)" },
+      { type: "design", text: "Premium lobi arayüzü: iki takım kolonu (Kırmızı / Mavi), oyuncu slotları (dolu/boş), takım değiştirme butonu ve animasyonlu oyuncu kartları" },
+      { type: "improvement", text: "Oyuncu sayacı çubuğu: anlık toplam / maksimum gösterge ile doluluk barı" },
+      { type: "feature", text: "Sohbet paneli lobi içine entegre edildi — collapsible açılır/kapanır, mesaj sayacı rozeti" },
+      // Maça Katılım Sistemi
+      { type: "feature", text: "Host tek başına maç başlatabilir — minimum takım doluluğu şartı kaldırıldı; solo maç pratiği destekleniyor" },
+      { type: "feature", text: "Oynan devam ederken odalar listede '⚡ CANLI' etiketiyle ayrı bölümde gösterilir" },
+      { type: "feature", text: "Mid-match join: devam eden bir odaya giren oyuncu takım seçim ekranıyla karşılanır (Kırmızı / Mavi)" },
+      { type: "feature", text: "Takım seçimi yapıldıktan sonra oyuncu direkt maça (MultiplayerBoard) yönlendirilir — lobi bekleme yok" },
+      { type: "fix", text: "room_join_team RPC: 'waiting' durumuna ek olarak 'playing' durumundaki odaya da katılım desteklendi" },
+      // Oda Yönetimi
+      { type: "fix", text: "Guest çıkışında oda açık kalır: room_leave RPC — HOST ayrılırsa oda silinir, GUEST ayrılırsa sadece slot boşalır" },
+      { type: "improvement", text: "Her iki takım da tamamen boşaldığında oda otomatik silinir (temizlik mekanizması)" },
+      { type: "fix", text: "Host 'Maça Geri Dön' butonu: playing durumdaki odada host'a MultiplayerBoard'a doğrudan erişim" },
+      // Güvenlik & Veritabanı
+      { type: "fix", text: "custom_rooms UPDATE RLS politikası düzeltildi: USING true → host_username doğrulaması" },
+      { type: "improvement", text: "SECURITY DEFINER RPC'ler: room_join_team, room_leave, room_start — tüm kritik oda işlemleri RLS bypass ile güvenli şekilde yürütülüyor" },
+      { type: "improvement", text: "Master şema (001): CREATE OR REPLACE / IF NOT EXISTS ile her zaman güvenle yeniden çalıştırılabilen idempotent migration" },
+      { type: "improvement", text: "custom_rooms tablosundan ranked kolonu kaldırıldı — özel odalar her zaman serbest maç olarak sabitlendi" },
+      { type: "improvement", text: "validate_room_teams trigger: her takım için max_players/2 sınırını INSERT/UPDATE anında veritabanı seviyesinde denetler" },
+    ],
+  },
+  {
     version: "0.0.5",
     date: "13 Haziran 2026",
     label: "alpha",
