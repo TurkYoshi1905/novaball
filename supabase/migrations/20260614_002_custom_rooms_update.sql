@@ -107,9 +107,10 @@ BEGIN
 END;
 $$;
 
--- ─── room_leave RPC güncelleme ────────────────────────────────────────────────
--- Herhangi bir oyuncu ayrılınca (maç sırasında da) oda silinir.
--- Bu, "özel maçta bir oyuncu çıkınca oda boşalsın" gereksinimidir.
+-- ─── room_leave RPC güncellemesi ─────────────────────────────────────────────
+-- Host ayrılırsa oda silinir.
+-- Guest ayrılırsa sadece slotu boşalır, oda açık kalır.
+-- (Ayrıntılı açıklama: migration 003)
 CREATE OR REPLACE FUNCTION public.room_leave(
   p_room_id  UUID,
   p_username TEXT
@@ -128,13 +129,13 @@ BEGIN
   SELECT * INTO v_room FROM public.custom_rooms WHERE id = p_room_id;
   IF NOT FOUND THEN RETURN; END IF;
 
-  -- Maç oynanıyor veya host ayrılıyorsa: odayı tamamen sil
-  IF v_room.status IN ('playing', 'starting') OR v_room.host_username = p_username THEN
+  -- Host ayrılıyorsa: odayı tamamen sil (status ne olursa olsun)
+  IF v_room.host_username = p_username THEN
     DELETE FROM public.custom_rooms WHERE id = p_room_id;
     RETURN;
   END IF;
 
-  -- Bekleme aşamasında normal çıkış
+  -- Guest ayrılıyorsa: sadece takımdan çıkar, oda AÇIK KALIR
   v_new_red  := COALESCE((SELECT jsonb_agg(e) FROM jsonb_array_elements(v_room.red_team)  e WHERE e->>'username' <> p_username), '[]'::JSONB);
   v_new_blue := COALESCE((SELECT jsonb_agg(e) FROM jsonb_array_elements(v_room.blue_team) e WHERE e->>'username' <> p_username), '[]'::JSONB);
 
