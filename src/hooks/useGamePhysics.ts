@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
+import { loadKeybindings, ALT_KEYS, type Keybindings } from "../utils/keybindings";
 import {
   CANVAS_WIDTH, CANVAS_HEIGHT,
   FIELD_LEFT, FIELD_RIGHT, FIELD_TOP, FIELD_BOTTOM,
@@ -66,8 +67,9 @@ interface GR {
   aiFacingX: number; aiFacingY: number;
   aiStamina: number; aiSprinting: boolean;
   matchEnded: boolean;
-  kickCharge: number;      // 0..1 şut şarj seviyesi
-  prevShootHeld: boolean;  // bir önceki frame'de şut basılı mıydı
+  kickCharge: number;          // 0..1 şut şarj seviyesi
+  prevShootHeld: boolean;      // bir önceki frame'de şut basılı mıydı
+  lastShooterTeam: "red" | "blue" | null;  // en son şut atan takım (kendi kalesine atma önlemi için)
 }
 
 interface Options {
@@ -94,7 +96,7 @@ export function useGamePhysics({ username, displayName, canvasRef, onScoreChange
     stamina: STAMINA_MAX, isSprinting: false, hasBall: null,
     playerFacingX: 1, playerFacingY: 0, aiFacingX: -1, aiFacingY: 0,
     aiStamina: STAMINA_MAX, aiSprinting: false, matchEnded: false,
-    kickCharge: 0, prevShootHeld: false,
+    kickCharge: 0, prevShootHeld: false, lastShooterTeam: null,
   });
 
   const resetPos = useCallback(() => {
@@ -105,7 +107,7 @@ export function useGamePhysics({ username, displayName, canvasRef, onScoreChange
     s.stamina = STAMINA_MAX; s.isSprinting = false;
     s.aiStamina = STAMINA_MAX; s.aiSprinting = false;
     s.playerFacingX = 1; s.playerFacingY = 0; s.aiFacingX = -1; s.aiFacingY = 0;
-    s.kickCharge = 0; s.prevShootHeld = false;
+    s.kickCharge = 0; s.prevShootHeld = false; s.lastShooterTeam = null;
   }, [username]);
 
   const resetGame = useCallback(() => {
@@ -127,6 +129,7 @@ export function useGamePhysics({ username, displayName, canvasRef, onScoreChange
   useEffect(() => {
     if (!active) { if (rafRef.current != null) cancelAnimationFrame(rafRef.current); return; }
     resetGame();
+    const kb = loadKeybindings();
 
     const tick = (ts: number) => {
       const s   = sr.current;
@@ -162,13 +165,25 @@ export function useGamePhysics({ username, displayName, canvasRef, onScoreChange
         if (s.goalState.timer <= 0) { s.goalState = null; resetPos(); }
       } else if (!s.matchEnded) {
         const mob = mobileInputRef?.current ?? null;
-        updatePhysics(s, dtF, mob);
+        updatePhysics(s, dtF, mob, kb);
         const goal = checkGoal(s.ball);
         if (goal) {
-          s.hasBall = null;
-          if (goal === "red") s.score.red++; else s.score.blue++;
-          s.goalState = { team: goal, timer: GOAL_RESET_DELAY };
-          onScoreChange({ ...s.score }); onGoal(goal);
+          // Kendi kalesine atma önlemi (sol kale → mavi; sağ kale → kırmızı)
+          const isOwnGoal = (goal === "blue" && s.lastShooterTeam === "red") ||
+                            (goal === "red"  && s.lastShooterTeam === "blue");
+          if (isOwnGoal) {
+            if (goal === "blue") {
+              s.ball.x = FIELD_LEFT  + s.ball.radius + 6; s.ball.vx =  Math.abs(s.ball.vx) * BALL_RESTITUTION;
+            } else {
+              s.ball.x = FIELD_RIGHT - s.ball.radius - 6; s.ball.vx = -Math.abs(s.ball.vx) * BALL_RESTITUTION;
+            }
+            s.hasBall = null;
+          } else {
+            s.hasBall = null;
+            if (goal === "red") s.score.red++; else s.score.blue++;
+            s.goalState = { team: goal, timer: GOAL_RESET_DELAY };
+            onScoreChange({ ...s.score }); onGoal(goal);
+          }
         }
       }
 
@@ -185,11 +200,11 @@ export function useGamePhysics({ username, displayName, canvasRef, onScoreChange
 
 // ─── Fizik ───────────────────────────────────────────────────────────────────
 
-function updatePhysics(s: GR, dtF: number, mob: MobileInput | null) {
+function updatePhysics(s: GR, dtF: number, mob: MobileInput | null, kb: Keybindings) {
   const { keys } = s;
 
   // Depar — klavye veya mobil sprint butonu
-  const wantSprint = keys.has("ShiftLeft") || (mob?.sprint ?? false);
+  const wantSprint = keys.has(kb.sprint) || keys.has(ALT_KEYS.sprint ?? "ShiftRight") || (mob?.sprint ?? false);
   if (wantSprint && s.stamina >= STAMINA_SPRINT_MIN) {
     s.isSprinting = true; s.stamina = Math.max(0, s.stamina - STAMINA_DRAIN * dtF);
   } else {
@@ -211,10 +226,10 @@ function updatePhysics(s: GR, dtF: number, mob: MobileInput | null) {
     ay = mob.dy * acc;
   } else {
     // Dijital klavye
-    if (keys.has("KeyW") || keys.has("ArrowUp"))    ay -= acc;
-    if (keys.has("KeyS") || keys.has("ArrowDown"))  ay += acc;
-    if (keys.has("KeyA") || keys.has("ArrowLeft"))  ax -= acc;
-    if (keys.has("KeyD") || keys.has("ArrowRight")) ax += acc;
+    if (keys.has(kb.moveUp)    || keys.has("ArrowUp"))    ay -= acc;
+    if (keys.has(kb.moveDown)  || keys.has("ArrowDown"))  ay += acc;
+    if (keys.has(kb.moveLeft)  || keys.has("ArrowLeft"))  ax -= acc;
+    if (keys.has(kb.moveRight) || keys.has("ArrowRight")) ax += acc;
     if (ax !== 0 && ay !== 0) { ax *= 0.707; ay *= 0.707; }
   }
 
@@ -226,7 +241,7 @@ function updatePhysics(s: GR, dtF: number, mob: MobileInput | null) {
 
   // ── Güç barı: basılı tut → şarj, bırak → ateşle ─────────────────────────
   if (s.kickCd > 0) s.kickCd -= dtF;
-  const shootHeld = keys.has("Space") || keys.has("KeyX") || (mob?.shoot ?? false);
+  const shootHeld = keys.has(kb.shoot) || keys.has(ALT_KEYS.shoot ?? "KeyX") || (mob?.shoot ?? false);
 
   if (s.kickCd <= 0) {
     if (shootHeld) {
@@ -234,6 +249,7 @@ function updatePhysics(s: GR, dtF: number, mob: MobileInput | null) {
       s.kickCharge = Math.min(1, s.kickCharge + CHARGE_RATE * dtF);
     } else if (s.prevShootHeld && s.kickCharge > 0.02) {
       // Tuş bırakıldı → şarj miktarına göre ateşle
+      s.lastShooterTeam = "red";
       const power = MIN_KICK_POWER + (MAX_KICK_POWER - MIN_KICK_POWER) * s.kickCharge;
       if (s.hasBall === "player") {
         releaseKick(s.player, s.ball, s.shootFx, power, s.playerFacingX, s.playerFacingY);
@@ -362,10 +378,12 @@ function updateAI(s: GR, dtF: number) {
     if (s.hasBall === "ai") {
       const distGoal = dist2(aiPlayer.x, aiPlayer.y, FIELD_LEFT, CENTER_Y);
       if (distGoal < 260 || Math.random() < 0.004) {
+        s.lastShooterTeam = "blue";
         releaseKick(aiPlayer, s.ball, s.aiShootFx, AI_KICK_POWER, s.aiFacingX, s.aiFacingY);
         s.hasBall = null; s.aiKickCd = 25;
       }
     } else if (s.hasBall === null && dist2(aiPlayer.x, aiPlayer.y, ball.x, ball.y) < AI_KICK_RANGE) {
+      s.lastShooterTeam = "blue";
       tryKick(aiPlayer, ball, s.aiShootFx, AI_KICK_POWER); s.aiKickCd = 28;
     }
   }

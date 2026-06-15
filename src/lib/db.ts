@@ -195,6 +195,32 @@ export async function getMatchHistory(username: string, limit = 30): Promise<Mat
   return (data ?? []) as MatchRow[];
 }
 
+// ─── Settings: Kullanıcı adı ve görünen ad değiştirme ─────────────────────────
+
+export async function updateUsername(
+  oldUsername: string,
+  newUsername: string
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc("change_username", {
+    p_old_username: oldUsername,
+    p_new_username: newUsername,
+  });
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+export async function updateDisplayName(
+  username: string,
+  newDisplayName: string
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc("change_display_name", {
+    p_username: username,
+    p_new_display_name: newDisplayName,
+  });
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
 // ─── Realtime ──────────────────────────────────────────────────────────────────
 
 export function subscribeLeaderboard(onUpdate: () => void): () => void {

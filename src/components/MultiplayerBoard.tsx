@@ -133,7 +133,7 @@ export default function MultiplayerBoard({
   }, [finishGame]);
 
   const { score, gameTimeMs, phase, lastGoalTeam, scoreRef, sendForfeit, sendChat } = useMultiplayerPhysics({
-    canvasRef, match, localUsername, isHost, ranked,
+    canvasRef, match, localUsername, localDisplayName, isHost, ranked,
     mobileInputRef, onGameEnd: finishGame, onOpponentForfeit: handleOpponentForfeit,
     onChatReceived: handleChatReceived,
   });
@@ -162,9 +162,8 @@ export default function MultiplayerBoard({
 
   // ─── Ayrıl: forfeit yayınla + sonuç ekranı göster (her iki oyuncuya da) ───
   const handleLeave = useCallback(() => {
-    // Özel oda maçları: sonuç ekranı göstermeden doğrudan ayrıl
+    // Özel oda maçları: forfeit gönderme — oda açık kalır, diğer oyuncular devam eder
     if (isCustomRoom) {
-      sendForfeit(myTeam);
       onLeave();
       return;
     }

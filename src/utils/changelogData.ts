@@ -16,6 +16,23 @@ export interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.0.7",
+    date: "15 Haziran 2026",
+    label: "minor",
+    title: "Ayarlar, Özelleştirilebilir Tuşlar & Kendi Kalesine Atma Önlemi",
+    description:
+      "NovaBall v0.0.7; hesap yönetimi için premium Ayarlar sayfası, oyun içi tuş atamalarını özelleştirme, multiplayer'da çift-şarj hatasının düzeltilmesi ve kendi kalesine atma önlemi içeriyor.",
+    changes: [
+      { type: "feature", text: "Ayarlar sayfası (ana menüden ⚙️ ile erişim): Hesap, Kontroller ve Hakkında sekmeleri" },
+      { type: "feature", text: "Hesap yönetimi: kullanıcı adı değiştirme (uygunluk kontrolü ile), görünen ad güncelleme, şifre değiştirme" },
+      { type: "feature", text: "Tuş atamaları: WASD / Space / Shift tuşları oyun içinde özelleştirilebilir; değişiklikler localStorage'a kaydedilir" },
+      { type: "fix",     text: "Multiplayer çift şarj hatası: client tarafında yalnızca kendi kick charge işlenir (remote oyuncuların şarjı ghost charge yaratmıyordu)" },
+      { type: "fix",     text: "Kendi kalesine atma önlemi: kırmızı takım sol kaleye, mavi takım sağ kaleye attığında gol sayılmaz — top geri sektirilerek yeniden oyuna girer" },
+      { type: "improvement", text: "change_username RPC: players + match_history tabloları atomik güncellenir; auth metadata senkronize edilir" },
+      { type: "improvement", text: "change_display_name RPC: görünen ad güvenli SECURITY DEFINER ile güncellenir" },
+    ],
+  },
+  {
     version: "0.0.6",
     date: "14 Haziran 2026",
     label: "minor",

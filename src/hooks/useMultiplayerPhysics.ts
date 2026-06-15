@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { loadKeybindings, ALT_KEYS } from "../utils/keybindings";
 import {
   CANVAS_WIDTH, CANVAS_HEIGHT,
   FIELD_LEFT, FIELD_RIGHT, FIELD_TOP, FIELD_BOTTOM,
@@ -91,6 +92,7 @@ interface Options {
   canvasRef:          React.RefObject<HTMLCanvasElement | null>;
   match:              MatchSession;
   localUsername:      string;
+  localDisplayName:   string;
   isHost:             boolean;
   ranked:             boolean;
   mobileInputRef?:    React.RefObject<MobileInput | null>;
@@ -143,7 +145,7 @@ function tryKick(
 }
 
 export function useMultiplayerPhysics({
-  canvasRef, match, localUsername, isHost, ranked, mobileInputRef, onGameEnd, onOpponentForfeit, onChatReceived,
+  canvasRef, match, localUsername, localDisplayName, isHost, ranked, mobileInputRef, onGameEnd, onOpponentForfeit, onChatReceived,
 }: Options) {
   const [hudScore,        setHudScore]        = useState<Score>({ red: 0, blue: 0 });
   const [hudTime,         setHudTime]         = useState(ranked ? RANKED_DURATION_MS : 0);
@@ -217,7 +219,7 @@ export function useMultiplayerPhysics({
   }, [match]);
 
   // ─── Fizik adımı (yalnızca host çalıştırır) ───────────────────────────────
-  const physicsStep = useCallback((gr: GR, dt: number) => {
+  const physicsStep = useCallback((gr: GR, dt: number, localPlayer: string | null = null) => {
     if (gr.phase === "goal_pause") {
       if (Date.now() >= gr.goalPauseEnd) { gr.phase = "playing"; resetPositions(gr); }
       return;
@@ -253,32 +255,38 @@ export function useMultiplayerPhysics({
       p.x = clamp(safe(p.x + p.vx), FIELD_LEFT + PLAYER_RADIUS, FIELD_RIGHT - PLAYER_RADIUS);
       p.y = clamp(safe(p.y + p.vy), FIELD_TOP  + PLAYER_RADIUS, FIELD_BOTTOM - PLAYER_RADIUS);
 
-      // ── Şut şarjı ──────────────────────────────────────────────────────
-      const cd = gr.kickCd[p.username] ?? 0;
-      if (cd > 0) gr.kickCd[p.username] = cd - 1;
+      // ── Şut şarjı — yalnızca gerçek input sahibi oyuncular için ─────────────
+      // Host: localPlayer === null → tüm oyuncular işlenir
+      // Client: localPlayer = localUsername → yalnızca kendi input'u işlenir
+      const hasRealInput = localPlayer === null || p.username === localPlayer;
+      if (hasRealInput) {
+        const cd = gr.kickCd[p.username] ?? 0;
+        if (cd > 0) gr.kickCd[p.username] = cd - 1;
 
-      if ((gr.kickCd[p.username] ?? 0) <= 0) {
-        if (inp.shoot) {
-          gr.kickCharge[p.username] = Math.min(1, (gr.kickCharge[p.username] ?? 0) + CHARGE_RATE);
-        } else if (gr.prevShoot[p.username] && (gr.kickCharge[p.username] ?? 0) > 0.02) {
-          const power = MIN_KICK_POWER + (MAX_KICK_POWER - MIN_KICK_POWER) * (gr.kickCharge[p.username] ?? 0);
-          if (gr.hasBall === p.username) {
-            // Sahip olarak bırakarak şut — lastShooter'ı hasBall null olmadan ÖNCE kaydet
-            gr.lastShooter = p.username;
-            releaseKick(gr.facingX[p.username], gr.facingY[p.username], gr.ball, power);
-            gr.hasBall = null;
-          } else {
-            // Serbest topa vur
-            gr.lastShooter = p.username;
-            tryKick(p.x, p.y, p.vx, p.vy, gr.ball, power);
+        if ((gr.kickCd[p.username] ?? 0) <= 0) {
+          if (inp.shoot) {
+            gr.kickCharge[p.username] = Math.min(1, (gr.kickCharge[p.username] ?? 0) + CHARGE_RATE);
+          } else if (gr.prevShoot[p.username] && (gr.kickCharge[p.username] ?? 0) > 0.02) {
+            const power = MIN_KICK_POWER + (MAX_KICK_POWER - MIN_KICK_POWER) * (gr.kickCharge[p.username] ?? 0);
+            if (gr.hasBall === p.username) {
+              // Sahip olarak bırakarak şut — lastShooter'ı hasBall null olmadan ÖNCE kaydet
+              gr.lastShooter = p.username;
+              releaseKick(gr.facingX[p.username], gr.facingY[p.username], gr.ball, power);
+              gr.hasBall = null;
+            } else {
+              // Serbest topa vur
+              gr.lastShooter = p.username;
+              tryKick(p.x, p.y, p.vx, p.vy, gr.ball, power);
+            }
+            gr.kickCharge[p.username] = 0;
+            gr.kickCd[p.username] = 18;
+          } else if (!inp.shoot) {
+            gr.kickCharge[p.username] = 0;
           }
-          gr.kickCharge[p.username] = 0;
-          gr.kickCd[p.username] = 18;
-        } else if (!inp.shoot) {
-          gr.kickCharge[p.username] = 0;
         }
+        gr.prevShoot[p.username] = inp.shoot;
       }
-      gr.prevShoot[p.username] = inp.shoot;
+      // Her zaman güncel kickCharge değerini player'a yansıt (remote için game_state'ten gelir)
       p.kickCharge = gr.kickCharge[p.username] ?? 0;
     }
 
@@ -364,12 +372,17 @@ export function useMultiplayerPhysics({
       if (gr.ball.x - BALL_RADIUS < FIELD_LEFT) {
         if (gr.ball.y >= GOAL_TOP && gr.ball.y <= GOAL_BOTTOM) {
           if (gr.ball.x < GOAL_LEFT_X) {
-            gr.score.blue++; gr.lastGoalTeam = "blue";
-            // lastShooter: hasBall null iken şut atıldığında da gol kredi verir
+            // Kendi kalesine atma kontrolü: kırmızı oyuncu sol kaleye (kendi kalesine) atarsa geri sektir
             const scorer = gr.hasBall ?? gr.lastShooter;
-            if (scorer) gr.goalCounts[scorer] = (gr.goalCounts[scorer] ?? 0) + 1;
-            gr.lastShooter = null;
-            gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
+            const scorerTeam = scorer ? (gr.players.find(p => p.username === scorer)?.team ?? null) : null;
+            if (scorerTeam === "red") {
+              gr.ball.x = FIELD_LEFT + BALL_RADIUS + 2; gr.ball.vx = Math.abs(gr.ball.vx) * BALL_RESTITUTION;
+            } else {
+              gr.score.blue++; gr.lastGoalTeam = "blue";
+              if (scorer) gr.goalCounts[scorer] = (gr.goalCounts[scorer] ?? 0) + 1;
+              gr.lastShooter = null;
+              gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
+            }
           }
         } else {
           gr.ball.x = FIELD_LEFT + BALL_RADIUS; gr.ball.vx = Math.abs(gr.ball.vx) * BALL_RESTITUTION;
@@ -380,11 +393,17 @@ export function useMultiplayerPhysics({
       if (gr.ball.x + BALL_RADIUS > FIELD_RIGHT) {
         if (gr.ball.y >= GOAL_TOP && gr.ball.y <= GOAL_BOTTOM) {
           if (gr.ball.x > GOAL_RIGHT_X) {
-            gr.score.red++; gr.lastGoalTeam = "red";
+            // Kendi kalesine atma kontrolü: mavi oyuncu sağ kaleye (kendi kalesine) atarsa geri sektir
             const scorer = gr.hasBall ?? gr.lastShooter;
-            if (scorer) gr.goalCounts[scorer] = (gr.goalCounts[scorer] ?? 0) + 1;
-            gr.lastShooter = null;
-            gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
+            const scorerTeam = scorer ? (gr.players.find(p => p.username === scorer)?.team ?? null) : null;
+            if (scorerTeam === "blue") {
+              gr.ball.x = GOAL_RIGHT_X - BALL_RADIUS - 2; gr.ball.vx = -Math.abs(gr.ball.vx) * BALL_RESTITUTION;
+            } else {
+              gr.score.red++; gr.lastGoalTeam = "red";
+              if (scorer) gr.goalCounts[scorer] = (gr.goalCounts[scorer] ?? 0) + 1;
+              gr.lastShooter = null;
+              gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
+            }
           }
         } else {
           gr.ball.x = FIELD_RIGHT - BALL_RADIUS; gr.ball.vx = -Math.abs(gr.ball.vx) * BALL_RESTITUTION;
@@ -681,6 +700,7 @@ export function useMultiplayerPhysics({
     const onVisChange = () => { if (!document.hidden) lastTs = 0; };
     document.addEventListener("visibilitychange", onVisChange);
 
+    const kb = loadKeybindings();
     let lastTs = 0;
     const loop = (ts: number) => {
       const g = grRef.current;
@@ -695,10 +715,10 @@ export function useMultiplayerPhysics({
       // Lokal girdi oku
       const keys = keysRef.current;
       const mob  = mobileInputRef?.current;
-      const dx     = (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) - (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0) + (mob?.dx ?? 0);
-      const dy     = (keys.has("KeyS") || keys.has("ArrowDown")  ? 1 : 0) - (keys.has("KeyW") || keys.has("ArrowUp")   ? 1 : 0) + (mob?.dy ?? 0);
-      const shoot  = keys.has("Space") || keys.has("KeyX") || (mob?.shoot ?? false);
-      const sprint = keys.has("ShiftLeft") || keys.has("ShiftRight") || (mob?.sprint ?? false);
+      const dx     = (keys.has(kb.moveRight) || keys.has("ArrowRight") ? 1 : 0) - (keys.has(kb.moveLeft)  || keys.has("ArrowLeft") ? 1 : 0) + (mob?.dx ?? 0);
+      const dy     = (keys.has(kb.moveDown)  || keys.has("ArrowDown")  ? 1 : 0) - (keys.has(kb.moveUp)    || keys.has("ArrowUp")   ? 1 : 0) + (mob?.dy ?? 0);
+      const shoot  = keys.has(kb.shoot)  || keys.has(ALT_KEYS.shoot  ?? "KeyX")      || (mob?.shoot  ?? false);
+      const sprint = keys.has(kb.sprint) || keys.has(ALT_KEYS.sprint ?? "ShiftRight") || (mob?.sprint ?? false);
       g.inputs[localUsername] = { dx: clamp(dx, -1, 1), dy: clamp(dy, -1, 1), shoot, sprint };
 
       // Transport tipine göre sync aralığını belirle (429 koruması)
@@ -726,7 +746,8 @@ export function useMultiplayerPhysics({
       } else {
         // Client: istemci-tarafı tahmin — yerel girdiyi anında uygula (60 FPS akıcı hareket).
         // Host durumu geldiğinde lerp ile yumuşak reconciliation uygulanır.
-        physicsStep(g, dt);
+        // localUsername geçirilir: yalnızca kendi kick charge hesaplanır (çift-şarj önlemi)
+        physicsStep(g, dt, localUsername);
         const now = Date.now();
         const curDx = clamp(g.inputs[localUsername]?.dx ?? 0, -1, 1);
         const curDy = clamp(g.inputs[localUsername]?.dy ?? 0, -1, 1);

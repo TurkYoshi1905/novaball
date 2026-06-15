@@ -215,6 +215,28 @@ bash github-sync.sh push "NovaBall: güncelleme"
 
 ## Sürüm Geçmişi
 
+### v0.0.7 — Ayarlar, Özelleştirilebilir Tuşlar & Kendi Kalesine Atma Önlemi (15 Haziran 2026)
+
+> Premium Ayarlar sayfası (hesap/kontroller/hakkında), tuş atama özelleştirme, multiplayer çift-şarj hatası düzeltmesi ve kendi kalesine atma önlemi.
+
+#### ⚙️ Ayarlar Sayfası
+- **Hesap sekmesi**: Kullanıcı adı değiştirme (debounced uygunluk kontrolü), görünen ad güncelleme, şifre değiştirme modali
+- **Kontroller sekmesi**: WASD / Space / Shift tuşları oyun içinde özelleştirilebilir; ayarlar localStorage'a kaydedilir; "Varsayılana sıfırla" butonu
+- **Hakkında sekmesi**: Sürüm bilgisi, kuruluş tarihi, destek e-postası, yasal metin
+- Ana menüdeki oyuncu kartına ⚙️ Settings butonu eklendi (LogOut'un yanına)
+- `change_username` ve `change_display_name` Supabase SECURITY DEFINER RPC'leri (`supabase/migrations/20260615_005_settings_changes.sql`)
+
+#### 🎯 Tuş Atamaları
+- `utils/keybindings.ts`: `Keybindings` arayüzü, `DEFAULT_KEYBINDINGS`, `ALT_KEYS`, `KEY_LABEL`, `loadKeybindings`, `saveKeybindings`
+- Hem `useGamePhysics` hem `useMultiplayerPhysics` hook'u keybindings sistemi kullanıyor
+- Alt tuşlar (ArrowKeys + KeyX + ShiftRight) her zaman aktif; yalnızca birincil tuşlar özelleştirilebilir
+
+#### 🐛 Hata Düzeltmeleri
+- **Multiplayer çift-şarj**: `physicsStep` artık `localPlayer` parametresi alıyor; client tarafında yalnızca kendi kick charge'ı hesaplanır — remote oyuncuların ghost charge üretmesi önlendi
+- **Kendi kalesine atma önlemi**: Sol kaleye kırmızı, sağ kaleye mavi oyuncu attığında gol sayılmaz — top geri sektirilerek sahaya döner (hem AI hem multiplayer'da geçerli)
+
+---
+
 ### v0.0.6 — Premium Landing Page, Maça Katılım & HaxBall Özel Odalar (14 Haziran 2026)
 
 > Yeni kullanıcılar için tam ekran premium karşılama sayfası, devam eden maçlara mid-match katılım, host tek başına maç başlatma ve HaxBall tarzı format seçimi ile lobi yenileme.

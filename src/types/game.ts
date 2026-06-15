@@ -104,7 +104,7 @@ export type AppScreen =
   | "landing"
   | "login" | "register" | "email-verify"
   | "forgot-password" | "reset-password"
-  | "menu" | "rankpage" | "changelog"
+  | "menu" | "rankpage" | "changelog" | "settings"
   | "playing" | "ranked" | "result"
   | "leaderboard" | "profile"
   | "mod-select" | "matchmaking"

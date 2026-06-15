@@ -22,6 +22,7 @@ import RoomLobbyPage from "./components/RoomLobbyPage";
 import MatchIntroPage from "./components/MatchIntroPage";
 import MultiplayerBoard from "./components/MultiplayerBoard";
 import MultiplayerResult from "./components/MultiplayerResult";
+import SettingsPage from "./components/SettingsPage";
 import type { AppScreen, MatchResultData, GameMode, MatchSession, CustomRoom, MPResult } from "./types/game";
 import { loadRP, saveRP, getRankForRP, calcRPForWin } from "./utils/rankSystem";
 import { getPlayerByAuthId, createPlayer, updateLastSeen, saveMatch } from "./lib/db";
@@ -285,12 +286,22 @@ export default function App() {
         onLogout={handleLogout}
         onShowLeaderboard={() => setScreen("leaderboard")}
         onShowProfile={() => { setViewingUser(username); setPrevScreen("menu"); setScreen("profile"); }}
+        onShowSettings={() => setScreen("settings")}
       />
     );
   }
 
   if (screen === "rankpage")  return <RankPage onBack={() => setScreen("menu")} />;
   if (screen === "changelog") return <ChangelogPage onBack={() => setScreen("menu")} />;
+  if (screen === "settings")  return (
+    <SettingsPage
+      username={username}
+      displayName={displayName}
+      onBack={() => setScreen("menu")}
+      onUsernameChange={setUsername}
+      onDisplayNameChange={setDisplayName}
+    />
+  );
 
   if (screen === "playing") return <GameBoard username={username} displayName={displayName} onBackToMenu={() => setScreen("menu")} />;
   if (screen === "ranked")  return <GameBoard username={username} displayName={displayName} ranked onMatchEnd={handleMatchEnd} onBackToMenu={() => setScreen("menu")} />;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trophy, LogOut, Users, Zap, Star } from "lucide-react";
+import { Trophy, LogOut, Users, Zap, Star, Settings } from "lucide-react";
 import { FOUNDING_DATE } from "../types/game";
 import { loadRP, getRankForRP, getRPProgressInRank, ALL_RANKS } from "../utils/rankSystem";
 import CHANGELOG from "../utils/changelogData";
@@ -16,11 +16,12 @@ interface Props {
   onLogout: () => void;
   onShowLeaderboard: () => void;
   onShowProfile: () => void;
+  onShowSettings: () => void;
 }
 
 export default function MainMenu({
   username, displayName, onPlay, onMatchmaking, onCustomRooms,
-  onShowRanks, onShowChangelog, onLogout, onShowLeaderboard, onShowProfile,
+  onShowRanks, onShowChangelog, onLogout, onShowLeaderboard, onShowProfile, onShowSettings,
 }: Props) {
   const [showHowTo,  setShowHowTo]  = useState(false);
   const [showLogout, setShowLogout] = useState(false);
@@ -89,6 +90,13 @@ export default function MainMenu({
               <span className="text-white/30 text-[11px]">@{username}</span>
             </div>
             <span className="text-white/20 text-[11px] group-hover:text-white/45 transition-colors mr-1">Profil →</span>
+            <button
+              onClick={e => { e.stopPropagation(); onShowSettings(); }}
+              className="p-1.5 rounded-lg text-white/18 hover:text-white/55 hover:bg-white/8 transition-all flex-shrink-0"
+              title="Ayarlar"
+            >
+              <Settings size={13} />
+            </button>
             <button
               onClick={e => { e.stopPropagation(); setShowLogout(true); }}
               className="p-1.5 rounded-lg text-white/18 hover:text-[#f87171] hover:bg-[#f87171]/10 transition-all flex-shrink-0"
