@@ -16,6 +16,24 @@ export interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.0.8",
+    date: "15 Haziran 2026",
+    label: "minor",
+    title: "Premium Arayüz Güncellemesi — Ana Menü, Eşleştirme & Ayarlar",
+    description:
+      "NovaBall v0.0.8; ana menüden eşleştirme ekranına kadar tüm temel sayfalar premium kalitede yeniden tasarlandı. Tam ekran düzenler, gelişmiş animasyonlar, arttırılmış renk kontrastı ve mobil ile masaüstü uyumluluğu ön planda tutuldu.",
+    changes: [
+      { type: "design", text: "Ana menü tam ekran premium düzene yükseltildi: üst başlık çubuğu (logo + oyuncu profil chip'i), dramatik 'Maça Gir' hero butonu, renkli oyun modu kartları (Özel Oda, Serbest Oyun) ve altın Lider Tablosu banner'ı" },
+      { type: "design", text: "Ayarlar butonu güncellendi: simgenin yanına 'Ayarlar' metni eklendi; geniş ekranlarda metin görünür, dar ekranlarda yalnızca simge kalır" },
+      { type: "design", text: "Eşleştirme sayfası tamamen yeniden tasarlandı: SVG halka sayacı (kalan süreyi görsel olarak gösterir), radar animasyonlu tarama efekti, oyuncu slot kartları (dolup boşalan), urgency efekti (son 20 saniyede kırmızıya döner)" },
+      { type: "design", text: "Eşleştirme 'Oyuncu Bulundu!' ekranı güçlendirildi: büyük yeşil onay simgesi, pulsing animasyon, ardışık yükleme noktaları" },
+      { type: "improvement", text: "Ayarlar sayfası renk kontrastı iyileştirildi: bölüm başlıkları neon mavi renk ve gradient çizgi ayırıcıyla belirginleştirildi; kart arka planları ve kenarlıklar daha görünür hale getirildi" },
+      { type: "improvement", text: "Hesap bilgileri kartına oyuncu önizleme alanı (avatar + isim + @kullanıcıadı) eklendi" },
+      { type: "design", text: "Logo (favicon) güncellendi: turuncu SVG ikonun yerine neon yeşil NovaBall logosu (PNG) kullanılmaya başlandı; favicon.svg kaldırıldı" },
+      { type: "improvement", text: "replit.md dosyası .migration-backup/replit.md'deki tam mimari belgeleme ile güncellendi" },
+    ],
+  },
+  {
     version: "0.0.7",
     date: "15 Haziran 2026",
     label: "minor",

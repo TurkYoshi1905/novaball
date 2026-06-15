@@ -92,9 +92,10 @@ export default function MainMenu({
             </div>
           </button>
           <button onClick={onShowSettings}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-white/35 hover:text-white/70 hover:bg-white/8 transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white/38 hover:text-white/70 hover:bg-white/8 transition-all"
             title="Ayarlar">
-            <Settings size={15} />
+            <Settings size={14} />
+            <span className="text-xs font-bold hidden sm:inline">Ayarlar</span>
           </button>
           <button onClick={() => setShowLogout(true)}
             className="w-9 h-9 rounded-xl flex items-center justify-center text-white/28 hover:text-[#f87171] hover:bg-[#f87171]/10 transition-all"
