@@ -89,6 +89,13 @@ export default function App() {
 
   // ─── Auth state machine ────────────────────────────────────────────────────
   useEffect(() => {
+    // ── Güvenlik ağı: max 6 saniye bekle, sonra landing'e düş ──────────────
+    // Supabase cold-start ya da ağ gecikmesinde spinner'da takılmayı önler.
+    const loadingGuard = setTimeout(() => {
+      setIsLoading(false);
+      setScreen("landing");
+    }, 6000);
+
     // ── Şifre sıfırlama linki tespiti ──────────────────────────────────────
     // Supabase recovery URL'si: https://app.com/#access_token=...&type=recovery
     // window.location.hash'i getSession() çağrılmadan önce okuyoruz.
@@ -100,6 +107,7 @@ export default function App() {
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(loadingGuard);
       if (!session) { setScreen("landing"); setIsLoading(false); return; }
 
       // Şifre sıfırlama akışı: loadPlayer çağırma, doğrudan reset-password'a git.
@@ -147,7 +155,10 @@ export default function App() {
       await loadPlayer(session.user.id);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(loadingGuard);
+      subscription.unsubscribe();
+    };
   }, [loadPlayer]);
 
   // ─── Periodic last_seen ────────────────────────────────────────────────────

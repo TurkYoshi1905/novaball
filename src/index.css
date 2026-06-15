@@ -526,10 +526,26 @@
     .hud-score { font-size: 26px; }
     .hud-time { font-size: 15px; }
     .game-hud { height: 44px; padding: 0 10px; }
-    /* Canvas zone tüm kalan yüksekliği kaplar — kontroller üste overlay olarak yerleşir */
-    .game-canvas-zone { padding: 0; }
-    .game-canvas-wrapper { max-width: 100%; height: 100%; aspect-ratio: unset; }
     .game-canvas { border-radius: 0; border: none; }
+  }
+
+  /* Mobil YATAY — canvas oranı korunarak yüksekliğe göre ölçeklenir */
+  @media (max-width: 1024px) and (orientation: landscape) {
+    /* Canvas zone: padding kaldır, tüm alanı kullan */
+    .game-canvas-zone { padding: 0; align-items: stretch; }
+    /* Wrapper: yükseklik canvas zone'u doldursun, genişlik oran'dan hesaplansın */
+    .game-canvas-wrapper {
+      width: auto;          /* genişlik aspect-ratio'dan gelsin */
+      height: 100%;         /* mevcut yüksekliği tam doldur */
+      max-width: 100%;      /* ekran genişliğini taşırma */
+      aspect-ratio: 16 / 9; /* ASLA bozma */
+    }
+  }
+
+  /* Mobil DIKEY — portrait overlay zaten var, ama canvas da bozulmasın */
+  @media (max-width: 899px) and (orientation: portrait) {
+    .game-canvas-zone { padding: 0; }
+    .game-canvas-wrapper { width: 100%; height: auto; aspect-ratio: 16 / 9; }
   }
 
   @media (max-width: 480px) {

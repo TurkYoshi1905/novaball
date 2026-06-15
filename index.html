@@ -2,32 +2,39 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
+    <meta name="format-detection" content="telephone=no" />
 
     <!-- ── Primary SEO ────────────────────────────────────────────── -->
-    <title>NovaBall — Ücretsiz Online 2D Arcade Futbol Oyunu</title>
-    <meta name="description" content="NovaBall, tarayıcınızda oynayabileceğiniz ücretsiz bir 2D arcade futbol oyunudur. Güç barı şut sistemi, 19 seviyeli rank sistemi, mobil joystick desteği ve yapay zeka rakibiyle rekabetçi maçlar sizi bekliyor." />
-    <meta name="keywords" content="novaball, online futbol oyunu, 2d futbol, arcade futbol, haxball, mamoball, tarayıcı oyunu, ücretsiz oyun, futbol oyunu türkçe, top oyunu" />
+    <title>NovaBall — Ücretsiz Online 2D Arcade Futbol Oyunu | Tarayıcıda Oyna</title>
+    <meta name="description" content="NovaBall, tarayıcınızda ücretsiz oynayabileceğiniz modern 2D arcade futbol oyunudur. Güç barı şut sistemi, 19 seviyeli ranked sistem, gerçek zamanlı çok oyunculu (1v1–5v5), mobil joystick ve yapay zeka rakibi. Hesap gerekmez, kurulum yok." />
+    <meta name="keywords" content="novaball, online futbol oyunu, 2d futbol, arcade futbol, haxball alternatif, mamoball, tarayıcı oyunu, ücretsiz oyun, futbol oyunu türkçe, top oyunu, multiplayer futbol, ranked futbol, mobil futbol oyunu" />
     <meta name="author" content="NovaBall" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="revisit-after" content="7 days" />
+    <meta name="language" content="Turkish" />
     <link rel="canonical" href="https://novaball.vercel.app/" />
 
     <!-- ── Open Graph / Facebook ──────────────────────────────────── -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="NovaBall" />
-    <meta property="og:title" content="NovaBall — Ücretsiz Online 2D Arcade Futbol Oyunu" />
-    <meta property="og:description" content="Tarayıcınızda hemen oynayın! Güç barı şut sistemi, 19 seviyeli rank, mobil joystick ve AI rakibiyle rekabetçi 2D futbol. Hesap gerekmez, kurulum yok." />
+    <meta property="og:title" content="NovaBall — Ücretsiz Online 2D Arcade Futbol | Tarayıcıda Oyna" />
+    <meta property="og:description" content="Tarayıcınızda hemen oynayın! Güç barı şut, 19 ranked seviyesi, gerçek zamanlı 1v1–5v5 çok oyunculu, mobil joystick ve AI rakibi. Hesap gerekmez, kurulum yok — tamamen ücretsiz." />
     <meta property="og:url" content="https://novaball.vercel.app/" />
     <meta property="og:image" content="https://novaball.vercel.app/opengraph.jpg" />
+    <meta property="og:image:secure_url" content="https://novaball.vercel.app/opengraph.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="NovaBall — 2D Arcade Futbol Oyunu" />
+    <meta property="og:image:alt" content="NovaBall — 2D Arcade Futbol Oyunu, Tarayıcıda Oyna" />
     <meta property="og:locale" content="tr_TR" />
 
     <!-- ── Twitter / X Card ──────────────────────────────────────── -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@novaball" />
+    <meta name="twitter:creator" content="@novaball" />
     <meta name="twitter:title" content="NovaBall — Ücretsiz Online 2D Arcade Futbol Oyunu" />
-    <meta name="twitter:description" content="Tarayıcında hemen oyna! Güç barı şutu, 19 rank seviyesi, mobil joystick ve yapay zeka rakibi. Hesap gerekmez." />
+    <meta name="twitter:description" content="Tarayıcında hemen oyna! Güç barı şutu, 19 rank seviyesi, gerçek zamanlı çok oyunculu 1v1–5v5, mobil joystick ve AI rakibi. Hesap gerekmez." />
     <meta name="twitter:image" content="https://novaball.vercel.app/opengraph.jpg" />
     <meta name="twitter:image:alt" content="NovaBall oyun ekranı" />
 
@@ -38,12 +45,15 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="NovaBall" />
     <meta name="application-name" content="NovaBall" />
+    <meta name="msapplication-TileColor" content="#070d16" />
+    <meta name="msapplication-TileImage" content="/icon-192.png" />
 
     <!-- ── Favicons ───────────────────────────────────────────────── -->
     <link rel="icon" type="image/png" href="/favicon.png" sizes="512x512" />
     <link rel="icon" type="image/png" href="/icon-192.png" sizes="192x192" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
     <link rel="shortcut icon" href="/favicon.png" />
+    <link rel="manifest" href="/manifest.json" />
 
     <!-- ── JSON-LD Structured Data ───────────────────────────────── -->
     <script type="application/ld+json">
@@ -51,28 +61,44 @@
       "@context": "https://schema.org",
       "@type": "VideoGame",
       "name": "NovaBall",
-      "description": "NovaBall, Haxball ve Mamoball'dan ilham alan modern bir 2D tepeden görünümlü arcade futbol oyunudur. Tarayıcıda ücretsiz oynayın.",
+      "alternateName": ["Nova Ball", "NovaBall Futbol"],
+      "description": "NovaBall, Haxball ve Mamoball'dan ilham alan modern bir 2D tepeden görünümlü arcade futbol oyunudur. Tarayıcıda ücretsiz oynayın — hesap gerekmez, kurulum yok.",
       "url": "https://novaball.vercel.app/",
       "image": "https://novaball.vercel.app/opengraph.jpg",
-      "genre": ["Arcade", "Sports", "Football"],
-      "gamePlatform": ["Web Browser", "Mobile Browser"],
+      "screenshot": "https://novaball.vercel.app/opengraph.jpg",
+      "genre": ["Arcade", "Sports", "Football", "Multiplayer"],
+      "gamePlatform": ["Web Browser", "Mobile Browser", "Desktop Browser"],
       "applicationCategory": "Game",
+      "applicationSubCategory": "Sports Game",
       "operatingSystem": "Any",
+      "browserRequirements": "Requires a modern web browser with JavaScript enabled",
       "offers": {
         "@type": "Offer",
         "price": "0",
-        "priceCurrency": "TRY"
+        "priceCurrency": "TRY",
+        "availability": "https://schema.org/InStock"
       },
       "datePublished": "2026-06-11",
       "inLanguage": "tr",
-      "playMode": "SinglePlayer"
+      "playMode": ["SinglePlayer", "MultiPlayer"],
+      "numberOfPlayers": {
+        "@type": "QuantitativeValue",
+        "minValue": 1,
+        "maxValue": 10
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "NovaBall",
+        "url": "https://novaball.vercel.app/"
+      }
     }
     </script>
 
-    <!-- ── Fonts ──────────────────────────────────────────────────── -->
+    <!-- ── Fonts — preconnect first, then load ───────────────────── -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>

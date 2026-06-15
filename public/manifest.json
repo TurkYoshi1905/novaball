@@ -1,0 +1,35 @@
+{
+  "name": "NovaBall — 2D Arcade Futbol",
+  "short_name": "NovaBall",
+  "description": "Tarayıcıda ücretsiz oynayabileceğiniz modern 2D arcade futbol oyunu. Güç barı şutu, 19 ranked seviye, gerçek zamanlı çok oyunculu 1v1–5v5.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#070d16",
+  "theme_color": "#070d16",
+  "lang": "tr",
+  "categories": ["games", "sports"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/opengraph.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "NovaBall oyun ekranı"
+    }
+  ]
+}
