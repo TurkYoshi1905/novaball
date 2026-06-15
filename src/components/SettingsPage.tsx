@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import {
   ChevronLeft, Settings, User, Lock,
-  Info, Eye, EyeOff, Check, X, AlertCircle, RefreshCw, Mail, Shield, Edit2
+  Info, Eye, EyeOff, Check, X, AlertCircle, RefreshCw, Mail, Shield, Edit2,
+  Gamepad2, Keyboard, Info as InfoIcon,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { isUsernameAvailable } from "../lib/db";
@@ -29,32 +30,21 @@ export default function SettingsPage({
   const [tab,   setTab]   = useState<Tab>("account");
   const [modal, setModal] = useState<Modal>(null);
 
-  // Username modal
   const [newUsername,       setNewUsername]       = useState("");
   const [usernameAvail,     setUsernameAvail]     = useState<boolean | null>(null);
   const [usernameChecking,  setUsernameChecking]  = useState(false);
-
-  // Display name modal
   const [newDisplayName, setNewDisplayName] = useState(displayName);
-
-  // Password modal
   const [currentPw, setCurrentPw] = useState("");
   const [newPw,     setNewPw]     = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [showPw,    setShowPw]    = useState(false);
-
-  // Feedback
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
   const [error,   setError]   = useState("");
-
-  // Keybindings
   const [bindings,  setBindings]  = useState<Keybindings>(loadKeybindings);
   const [rebinding, setRebinding] = useState<keyof Keybindings | null>(null);
-
   const checkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Username availability debounce
   useEffect(() => {
     if (!newUsername || newUsername === username) {
       setUsernameAvail(null); setUsernameChecking(false); return;
@@ -69,7 +59,6 @@ export default function SettingsPage({
     return () => { if (checkTimerRef.current) clearTimeout(checkTimerRef.current); };
   }, [newUsername, username]);
 
-  // Key rebind listener
   useEffect(() => {
     if (!rebinding) return;
     const handler = (e: KeyboardEvent) => {
@@ -152,98 +141,149 @@ export default function SettingsPage({
     finally { setLoading(false); }
   }
 
-  const tabCls = (t: Tab) =>
-    `flex-1 py-2 text-sm font-semibold rounded-xl transition-all ${
-      tab === t ? "bg-white/10 text-white" : "text-white/35 hover:text-white/60"
-    }`;
-
   const actionKeys = Object.keys(DEFAULT_KEYBINDINGS) as (keyof Keybindings)[];
 
+  const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
+    { id: "account",  label: "Hesap",      icon: <User size={14} /> },
+    { id: "controls", label: "Kontroller", icon: <Gamepad2 size={14} /> },
+    { id: "about",    label: "Hakkında",   icon: <InfoIcon size={14} /> },
+  ];
+
   return (
-    <div className="novaball-screen flex flex-col min-h-[100dvh] bg-[#070d16] text-white overflow-hidden">
+    <div className="novaball-screen flex flex-col min-h-[100dvh] text-white overflow-hidden"
+      style={{ background: "linear-gradient(160deg, #0a1628 0%, #070d16 60%, #0d0f1a 100%)" }}>
+
       {/* Portrait overlay */}
       <div className="portrait-overlay">
         <div className="flex flex-col items-center gap-3 text-center px-8">
           <span className="text-5xl">📱</span>
           <p className="text-white font-bold text-xl">Telefonu yatay tut</p>
-          <p className="text-white/40 text-sm">NovaBall yatay ekranda daha iyi oynanır.</p>
+          <p className="text-white/50 text-sm">NovaBall yatay ekranda daha iyi oynanır.</p>
         </div>
       </div>
 
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 sm:px-8 py-4 border-b border-white/8 flex-shrink-0">
-        <button onClick={onBack} className="p-2 rounded-xl text-white/50 hover:text-white hover:bg-white/8 transition-all">
+      <div className="flex items-center gap-3 px-4 sm:px-8 py-4 flex-shrink-0"
+        style={{ borderBottom: "1px solid rgba(68,170,255,0.15)", background: "rgba(10,22,40,0.6)", backdropFilter: "blur(12px)" }}>
+        <button onClick={onBack}
+          className="p-2 rounded-xl transition-all hover:bg-white/10 text-white/60 hover:text-white">
           <ChevronLeft size={22} />
         </button>
-        <Settings size={18} className="text-white/40" />
-        <h1 className="text-white font-black text-xl">Ayarlar</h1>
-        <span className="ml-auto text-white/20 text-xs font-mono bg-white/5 px-2 py-0.5 rounded-lg">v0.0.7</span>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg,rgba(68,170,255,0.25),rgba(68,170,255,0.1))", border: "1px solid rgba(68,170,255,0.3)" }}>
+            <Settings size={16} className="text-[#4af]" />
+          </div>
+          <h1 className="text-white font-black text-xl tracking-tight">Ayarlar</h1>
+        </div>
+        <span className="ml-auto text-[#4af]/60 text-xs font-mono font-bold px-2.5 py-1 rounded-lg"
+          style={{ background: "rgba(68,170,255,0.1)", border: "1px solid rgba(68,170,255,0.2)" }}>
+          v0.0.7
+        </span>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 px-4 sm:px-8 pt-4 pb-2 flex-shrink-0">
-        <div className="flex gap-1 rounded-2xl p-1 w-full" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <button className={tabCls("account")}  onClick={() => setTab("account")}>👤 Hesap</button>
-          <button className={tabCls("controls")} onClick={() => setTab("controls")}>🎮 Kontroller</button>
-          <button className={tabCls("about")}    onClick={() => setTab("about")}>ℹ️ Hakkında</button>
+      <div className="flex gap-1.5 px-4 sm:px-8 pt-5 pb-3 flex-shrink-0">
+        <div className="flex gap-1.5 rounded-2xl p-1.5 w-full"
+          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+          {TABS.map(({ id, label, icon }) => (
+            <button key={id}
+              onClick={() => setTab(id)}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                tab === id
+                  ? "text-white shadow-lg"
+                  : "text-white/45 hover:text-white/70"
+              }`}
+              style={tab === id ? {
+                background: "linear-gradient(135deg,rgba(68,170,255,0.22),rgba(68,170,255,0.08))",
+                border: "1px solid rgba(68,170,255,0.35)",
+                boxShadow: "0 0 20px rgba(68,170,255,0.12)",
+              } : {}}
+            >
+              <span className={tab === id ? "text-[#4af]" : ""}>{icon}</span>
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-4">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-2 pb-8">
 
-        {/* ── Hesap ──────────────────────────────────────────────── */}
+        {/* ── Hesap ──────────────────────────────────────────────────── */}
         {tab === "account" && (
-          <div className="flex flex-col gap-3 max-w-lg mx-auto">
-            <p className="text-white/25 text-xs uppercase tracking-widest px-1 mb-1">Hesap Bilgileri</p>
+          <div className="flex flex-col gap-4 max-w-lg mx-auto">
+            <SectionHeader icon={<User size={13} />} label="Hesap Bilgileri" />
 
-            <SCard icon={<User size={15} />}  label="Kullanıcı Adı" value={`@${username}`}  onClick={() => openModal("username")} />
-            <SCard icon={<Edit2 size={15} />} label="Görünen Ad"    value={displayName}      onClick={() => openModal("displayname")} />
-            <SCard icon={<Lock size={15} />}  label="Şifre"         value="••••••••"         onClick={() => openModal("password")} />
+            {/* User info preview */}
+            <div className="rounded-2xl px-5 py-4 flex items-center gap-4"
+              style={{ background: "linear-gradient(135deg,rgba(68,170,255,0.1),rgba(68,170,255,0.04))", border: "1px solid rgba(68,170,255,0.2)" }}>
+              <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-black flex-shrink-0"
+                style={{ background: "linear-gradient(135deg,#1a5cff,#0d3ccc)", border: "2px solid rgba(68,170,255,0.4)" }}>
+                {(displayName || username).charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-white font-black text-base truncate">{displayName || username}</p>
+                <p className="text-[#4af]/70 text-sm font-mono truncate">@{username}</p>
+              </div>
+            </div>
 
-            <p className="text-white/20 text-[11px] px-1 mt-1 leading-relaxed">
-              Kullanıcı adı değiştirildiğinde tüm maç geçmişi otomatik olarak güncellenir.
-              Görünen ad oyun içi canvas'ta ve sohbette gösterilir.
-            </p>
+            <SCard icon={<User size={15} />}  label="Kullanıcı Adı" value={`@${username}`}  onClick={() => openModal("username")} accent="blue" />
+            <SCard icon={<Edit2 size={15} />} label="Görünen Ad"    value={displayName}      onClick={() => openModal("displayname")} accent="blue" />
+            <SCard icon={<Lock size={15} />}  label="Şifre"         value="••••••••"         onClick={() => openModal("password")} accent="blue" />
+
+            <div className="rounded-xl px-4 py-3 flex items-start gap-2.5 mt-1"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}>
+              <InfoIcon size={13} className="text-white/40 mt-0.5 flex-shrink-0" />
+              <p className="text-white/50 text-[12px] leading-relaxed">
+                Kullanıcı adı değiştirildiğinde tüm maç geçmişi otomatik olarak güncellenir.
+                Görünen ad oyun içi canvas'ta ve sohbette gösterilir.
+              </p>
+            </div>
           </div>
         )}
 
-        {/* ── Kontroller ──────────────────────────────────────────── */}
+        {/* ── Kontroller ─────────────────────────────────────────────── */}
         {tab === "controls" && (
-          <div className="flex flex-col gap-3 max-w-lg mx-auto">
-            <div className="flex items-center justify-between mb-1 px-1">
-              <p className="text-white/25 text-xs uppercase tracking-widest">Tuş Atamaları</p>
+          <div className="flex flex-col gap-4 max-w-lg mx-auto">
+            <div className="flex items-center justify-between">
+              <SectionHeader icon={<Keyboard size={13} />} label="Tuş Atamaları" />
               <button
                 onClick={() => { setBindings({ ...DEFAULT_KEYBINDINGS }); saveKeybindings({ ...DEFAULT_KEYBINDINGS }); }}
-                className="flex items-center gap-1.5 text-white/28 hover:text-white/65 text-xs transition-colors"
+                className="flex items-center gap-1.5 text-white/50 hover:text-[#4af] text-xs font-semibold transition-colors px-3 py-1.5 rounded-lg hover:bg-[#4af]/8"
               >
-                <RefreshCw size={11} /> Varsayılana sıfırla
+                <RefreshCw size={11} /> Sıfırla
               </button>
             </div>
 
-            <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}>
               {actionKeys.map((action, idx) => {
                 const isLast  = idx === actionKeys.length - 1;
                 const isRb    = rebinding === action;
                 const altKey  = ALT_KEYS[action];
                 return (
-                  <div key={action} className={`flex items-center gap-3 px-4 py-3 ${!isLast ? "border-b border-white/5" : ""}`}>
-                    <span className="text-white/55 text-sm flex-1">{BINDING_LABELS[action]}</span>
+                  <div key={action}
+                    className={`flex items-center gap-3 px-5 py-3.5 ${!isLast ? "border-b" : ""} transition-colors ${isRb ? "" : "hover:bg-white/3"}`}
+                    style={!isLast ? { borderBottomColor: "rgba(255,255,255,0.07)" } : {}}>
+                    <span className="text-white/75 text-sm font-medium flex-1">{BINDING_LABELS[action]}</span>
                     <div className="flex items-center gap-2">
                       {altKey && (
-                        <span className="px-2.5 py-1 rounded-lg text-[11px] font-mono text-white/28"
-                          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                        <span className="px-2.5 py-1 rounded-lg text-[11px] font-mono text-white/40 font-semibold"
+                          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
                           {KEY_LABEL(altKey)}
                         </span>
                       )}
                       <button
                         onClick={() => setRebinding(isRb ? null : action)}
-                        className={`px-3 py-1 rounded-lg text-[12px] font-mono font-bold transition-all min-w-[64px] text-center ${
+                        className={`px-3.5 py-1.5 rounded-lg text-[12px] font-mono font-bold transition-all min-w-[72px] text-center ${
                           isRb
-                            ? "text-[#4af] border border-[#4af]/50 animate-pulse"
-                            : "text-white/85 border border-white/15 hover:bg-white/10"
+                            ? "text-[#4af] animate-pulse"
+                            : "text-white/85 hover:text-white"
                         }`}
-                        style={isRb ? { background: "rgba(74,170,255,0.12)" } : { background: "rgba(255,255,255,0.07)" }}
+                        style={isRb
+                          ? { background: "rgba(68,170,255,0.15)", border: "1.5px solid rgba(68,170,255,0.55)", boxShadow: "0 0 12px rgba(68,170,255,0.2)" }
+                          : { background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.18)" }}
                       >
                         {isRb ? "tuşa bas…" : KEY_LABEL(bindings[action])}
                       </button>
@@ -253,11 +293,11 @@ export default function SettingsPage({
               })}
             </div>
 
-            <div className="rounded-xl px-4 py-3 flex items-start gap-2.5"
-              style={{ background: "rgba(74,170,255,0.06)", border: "1px solid rgba(74,170,255,0.14)" }}>
-              <Info size={13} className="text-[#4af] mt-0.5 flex-shrink-0" />
-              <p className="text-white/45 text-[12px] leading-relaxed">
-                Tuşu yeniden atamak için ilgili butona tıkla, ardından istediğin tuşa bas.
+            <div className="rounded-xl px-4 py-3.5 flex items-start gap-3"
+              style={{ background: "rgba(68,170,255,0.07)", border: "1px solid rgba(68,170,255,0.18)" }}>
+              <Info size={14} className="text-[#4af] mt-0.5 flex-shrink-0" />
+              <p className="text-white/60 text-[12px] leading-relaxed">
+                Tuşu yeniden atamak için butona tıkla, ardından istediğin tuşa bas.
                 Soluk renkli tuşlar alternatif (değiştirilemez) tuşlardır.
                 Değişiklikler sonraki maç başlangıcında aktif olur.
               </p>
@@ -265,62 +305,68 @@ export default function SettingsPage({
           </div>
         )}
 
-        {/* ── Hakkında ──────────────────────────────────────────── */}
+        {/* ── Hakkında ───────────────────────────────────────────────── */}
         {tab === "about" && (
-          <div className="flex flex-col gap-3 max-w-lg mx-auto">
-            <p className="text-white/25 text-xs uppercase tracking-widest px-1 mb-1">Uygulama Bilgisi</p>
+          <div className="flex flex-col gap-4 max-w-lg mx-auto">
+            <SectionHeader icon={<InfoIcon size={13} />} label="Uygulama Bilgisi" />
 
-            <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}>
               {[
-                { label: "Sürüm",    value: "v0.0.7" },
-                { label: "Kuruluş", value: FOUNDING_DATE },
-                { label: "Motor",   value: "HTML5 Canvas + React 19" },
-                { label: "Platform",value: "Tarayıcı (PWA)" },
-              ].map(({ label, value }, i, a) => (
-                <div key={label} className={`flex items-center justify-between px-4 py-3.5 ${i < a.length - 1 ? "border-b border-white/5" : ""}`}>
-                  <span className="text-white/40 text-sm">{label}</span>
-                  <span className="text-white/80 text-sm font-medium">{value}</span>
+                { label: "Sürüm",    value: "v0.0.7",                    accent: true },
+                { label: "Kuruluş", value: FOUNDING_DATE,               accent: false },
+                { label: "Motor",   value: "HTML5 Canvas + React 19",   accent: false },
+                { label: "Platform",value: "Tarayıcı (PWA)",            accent: false },
+              ].map(({ label, value, accent }, i, a) => (
+                <div key={label}
+                  className={`flex items-center justify-between px-5 py-4 ${i < a.length - 1 ? "border-b" : ""}`}
+                  style={i < a.length - 1 ? { borderBottomColor: "rgba(255,255,255,0.07)" } : {}}>
+                  <span className="text-white/55 text-sm font-medium">{label}</span>
+                  <span className={`text-sm font-bold ${accent ? "text-[#4af]" : "text-white/85"}`}>{value}</span>
                 </div>
               ))}
             </div>
 
-            <p className="text-white/25 text-xs uppercase tracking-widest px-1 mt-2 mb-1">Destek</p>
-            <div className="rounded-2xl px-4 py-4 flex items-center gap-3"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <Mail size={18} className="text-[#4af] flex-shrink-0" />
+            <SectionHeader icon={<Mail size={13} />} label="Destek" />
+            <div className="rounded-2xl px-5 py-4 flex items-center gap-4 transition-all hover:bg-[#4af]/5"
+              style={{ background: "rgba(68,170,255,0.07)", border: "1px solid rgba(68,170,255,0.2)" }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(68,170,255,0.15)", border: "1px solid rgba(68,170,255,0.3)" }}>
+                <Mail size={18} className="text-[#4af]" />
+              </div>
               <div>
-                <p className="text-white/70 text-sm font-semibold">E-posta Desteği</p>
-                <p className="text-white/35 text-xs mt-0.5 font-mono">support.novaballofficial@gmail.com</p>
+                <p className="text-white/85 text-sm font-bold">E-posta Desteği</p>
+                <p className="text-[#4af]/70 text-xs mt-0.5 font-mono">support.novaballofficial@gmail.com</p>
               </div>
             </div>
 
-            <p className="text-white/25 text-xs uppercase tracking-widest px-1 mt-2 mb-1">Yasal</p>
-            <div className="rounded-2xl px-4 py-4 flex items-start gap-3"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <Shield size={15} className="text-white/25 mt-0.5 flex-shrink-0" />
-              <p className="text-white/32 text-[12px] leading-relaxed">
+            <SectionHeader icon={<Shield size={13} />} label="Yasal" />
+            <div className="rounded-2xl px-5 py-4 flex items-start gap-3"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <Shield size={15} className="text-white/35 mt-0.5 flex-shrink-0" />
+              <p className="text-white/55 text-[12px] leading-relaxed">
                 NovaBall, Haxball ve Mamoball'dan ilham alınarak oluşturulmuş bağımsız bir fan projesidir.
                 Oyun verileri Supabase üzerinde güvenli şekilde saklanır.{" "}
-                <span className="text-white/20">© 2026 NovaBall.</span>
+                <span className="text-white/35">© 2026 NovaBall. Tüm hakları saklıdır.</span>
               </p>
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Modal Overlay ──────────────────────────────────────── */}
+      {/* ── Modal Overlay ──────────────────────────────────────────── */}
       {modal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(7,13,22,0.93)", backdropFilter: "blur(14px)" }}
+          style={{ background: "rgba(7,13,22,0.92)", backdropFilter: "blur(16px)" }}
           onClick={(e) => { if (e.target === e.currentTarget && !loading) closeModal(); }}
         >
           <div
             className="w-full max-w-sm rounded-3xl p-6 flex flex-col gap-5"
             style={{
-              background: "linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))",
-              border: "1px solid rgba(255,255,255,0.13)",
-              boxShadow: "0 32px 80px rgba(0,0,0,0.6)",
+              background: "linear-gradient(160deg,rgba(20,35,65,0.95),rgba(10,16,32,0.98))",
+              border: "1px solid rgba(68,170,255,0.2)",
+              boxShadow: "0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(68,170,255,0.08)",
             }}
           >
             {/* Username modal */}
@@ -328,31 +374,34 @@ export default function SettingsPage({
               <>
                 <MHeader title="Kullanıcı Adını Değiştir" onClose={closeModal} disabled={loading} />
                 <div className="flex flex-col gap-2">
-                  <label className="text-white/38 text-xs">Yeni Kullanıcı Adı</label>
+                  <label className="text-white/60 text-xs font-semibold">Yeni Kullanıcı Adı</label>
                   <div className="relative">
                     <input
                       value={newUsername}
                       onChange={e => setNewUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
                       placeholder={username}
                       maxLength={15}
-                      className="w-full bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-white placeholder-white/18 text-sm outline-none focus:border-[#4af]/55 transition-colors pr-10"
+                      className="w-full rounded-xl px-4 py-3 text-white placeholder-white/25 text-sm outline-none transition-all pr-10"
+                      style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)" }}
+                      onFocus={e => { e.currentTarget.style.borderColor = "rgba(68,170,255,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(68,170,255,0.12)"; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.boxShadow = "none"; }}
                       autoFocus
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {usernameChecking && <div className="w-4 h-4 border-2 border-white/18 border-t-white/60 rounded-full animate-spin" />}
+                      {usernameChecking && <div className="w-4 h-4 border-2 border-white/20 border-t-white/70 rounded-full animate-spin" />}
                       {!usernameChecking && usernameAvail === true  && <Check size={16} className="text-green-400" />}
                       {!usernameChecking && usernameAvail === false && <X    size={16} className="text-red-400" />}
                     </div>
                   </div>
-                  <p className="text-white/20 text-[11px]">3–15 karakter · küçük harf, rakam veya alt çizgi</p>
+                  <p className="text-white/35 text-[11px]">3–15 karakter · küçük harf, rakam veya alt çizgi</p>
                   {newUsername.length > 0 && !isValidUn(newUsername) && (
-                    <p className="text-red-400/80 text-xs flex items-center gap-1"><AlertCircle size={12} /> Geçersiz format</p>
+                    <p className="text-red-400/90 text-xs flex items-center gap-1"><AlertCircle size={12} /> Geçersiz format</p>
                   )}
                   {isValidUn(newUsername) && usernameAvail === false && (
-                    <p className="text-red-400/80 text-xs flex items-center gap-1"><AlertCircle size={12} /> Bu kullanıcı adı alınmış</p>
+                    <p className="text-red-400/90 text-xs flex items-center gap-1"><AlertCircle size={12} /> Bu kullanıcı adı alınmış</p>
                   )}
                   {isValidUn(newUsername) && usernameAvail === true && (
-                    <p className="text-green-400/80 text-xs flex items-center gap-1"><Check size={12} /> Kullanılabilir</p>
+                    <p className="text-green-400/90 text-xs flex items-center gap-1"><Check size={12} /> Kullanılabilir</p>
                   )}
                 </div>
                 <Feedback success={success} error={error} />
@@ -366,16 +415,19 @@ export default function SettingsPage({
               <>
                 <MHeader title="Görünen Adını Değiştir" onClose={closeModal} disabled={loading} />
                 <div className="flex flex-col gap-2">
-                  <label className="text-white/38 text-xs">Yeni Görünen Ad</label>
+                  <label className="text-white/60 text-xs font-semibold">Yeni Görünen Ad</label>
                   <input
                     value={newDisplayName}
                     onChange={e => setNewDisplayName(e.target.value.slice(0, 32))}
                     placeholder={displayName}
                     maxLength={32}
-                    className="w-full bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-white placeholder-white/18 text-sm outline-none focus:border-[#4af]/55 transition-colors"
+                    className="w-full rounded-xl px-4 py-3 text-white placeholder-white/25 text-sm outline-none transition-all"
+                    style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)" }}
+                    onFocus={e => { e.currentTarget.style.borderColor = "rgba(68,170,255,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(68,170,255,0.12)"; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.boxShadow = "none"; }}
                     autoFocus
                   />
-                  <p className="text-white/20 text-[11px]">Maksimum 32 karakter. Canvas ve sohbette görünür.</p>
+                  <p className="text-white/35 text-[11px]">Maksimum 32 karakter. Canvas ve sohbette görünür.</p>
                 </div>
                 <Feedback success={success} error={error} />
                 <PrimaryBtn label={loading ? "Kaydediliyor…" : "Kaydet"}
@@ -390,18 +442,18 @@ export default function SettingsPage({
                 <MHeader title="Şifreni Değiştir" onClose={closeModal} disabled={loading} />
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-white/38 text-xs">Mevcut Şifre</label>
+                    <label className="text-white/60 text-xs font-semibold">Mevcut Şifre</label>
                     <PwInput value={currentPw} onChange={setCurrentPw} show={showPw} onToggle={() => setShowPw(v => !v)} placeholder="Mevcut şifren" />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-white/38 text-xs">Yeni Şifre</label>
+                    <label className="text-white/60 text-xs font-semibold">Yeni Şifre</label>
                     <PwInput value={newPw} onChange={setNewPw} show={showPw} onToggle={() => setShowPw(v => !v)} placeholder="En az 6 karakter" />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-white/38 text-xs">Yeni Şifre (Tekrar)</label>
+                    <label className="text-white/60 text-xs font-semibold">Yeni Şifre (Tekrar)</label>
                     <PwInput value={confirmPw} onChange={setConfirmPw} show={showPw} onToggle={() => setShowPw(v => !v)} placeholder="Tekrar gir" />
                     {confirmPw && confirmPw !== newPw && (
-                      <p className="text-red-400/80 text-xs flex items-center gap-1"><AlertCircle size={12} /> Şifreler eşleşmiyor</p>
+                      <p className="text-red-400/90 text-xs flex items-center gap-1"><AlertCircle size={12} /> Şifreler eşleşmiyor</p>
                     )}
                   </div>
                 </div>
@@ -418,21 +470,38 @@ export default function SettingsPage({
   );
 }
 
-// ── Sub-components ──────────────────────────────────────────────────────────────
+// ── Sub-components ─────────────────────────────────────────────────────────────
 
-function SCard({ icon, label, value, onClick }: {
-  icon: ReactNode; label: string; value: string; onClick: () => void;
+function SectionHeader({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <div className="flex items-center gap-2 px-1 mb-1">
+      <span className="text-[#4af]/70">{icon}</span>
+      <p className="text-[#4af]/80 text-xs font-black uppercase tracking-widest">{label}</p>
+      <div className="flex-1 h-px ml-1" style={{ background: "linear-gradient(to right, rgba(68,170,255,0.2), transparent)" }} />
+    </div>
+  );
+}
+
+function SCard({ icon, label, value, onClick, accent }: {
+  icon: ReactNode; label: string; value: string; onClick: () => void; accent?: string;
 }) {
   return (
     <button onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all hover:bg-white/5 text-left group"
-      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-      <span className="text-white/38 group-hover:text-white/60 transition-colors">{icon}</span>
+      className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all text-left group hover:scale-[1.01]"
+      style={{
+        background: "rgba(255,255,255,0.05)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(68,170,255,0.3)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(68,170,255,0.07)"; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.12)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; }}
+    >
+      <span className={`transition-colors ${accent === "blue" ? "text-[#4af]/70 group-hover:text-[#4af]" : "text-white/45 group-hover:text-white/70"}`}>{icon}</span>
       <div className="flex flex-col flex-1 min-w-0">
-        <span className="text-white/38 text-xs">{label}</span>
-        <span className="text-white/85 text-sm font-semibold truncate">{value}</span>
+        <span className="text-white/45 text-xs font-semibold">{label}</span>
+        <span className="text-white/90 text-sm font-bold truncate mt-0.5">{value}</span>
       </div>
-      <span className="text-white/18 group-hover:text-white/45 text-sm transition-colors">→</span>
+      <span className="text-white/30 group-hover:text-[#4af]/60 text-lg transition-all group-hover:translate-x-0.5">→</span>
     </button>
   );
 }
@@ -440,9 +509,9 @@ function SCard({ icon, label, value, onClick }: {
 function MHeader({ title, onClose, disabled }: { title: string; onClose: () => void; disabled?: boolean }) {
   return (
     <div className="flex items-center justify-between">
-      <h2 className="text-white font-black text-lg">{title}</h2>
+      <h2 className="text-white font-black text-lg tracking-tight">{title}</h2>
       <button onClick={onClose} disabled={disabled}
-        className="p-2 rounded-xl text-white/30 hover:text-white hover:bg-white/8 transition-all disabled:opacity-40">
+        className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-all disabled:opacity-40">
         <X size={18} />
       </button>
     </div>
@@ -453,10 +522,12 @@ function Feedback({ success, error }: { success: string; error: string }) {
   if (!success && !error) return null;
   const isOk = !!success;
   return (
-    <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm ${
-      isOk ? "bg-green-500/10 border border-green-500/22 text-green-300"
-           : "bg-red-500/10 border border-red-500/22 text-red-300"
-    }`}>
+    <div className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold ${
+      isOk ? "text-green-300" : "text-red-300"
+    }`}
+      style={isOk
+        ? { background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)" }
+        : { background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)" }}>
       {isOk ? <Check size={14} /> : <AlertCircle size={14} />}
       {success || error}
     </div>
@@ -466,24 +537,36 @@ function Feedback({ success, error }: { success: string; error: string }) {
 function PrimaryBtn({ label, disabled, onClick }: { label: string; disabled?: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} disabled={disabled}
-      className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed text-white"
-      style={{ background: "linear-gradient(135deg,#1a5cff,#0d3ccc)" }}>
+      className="w-full py-3.5 rounded-xl font-black text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed text-white tracking-wide"
+      style={{
+        background: "linear-gradient(135deg,#1a5cff,#0d3ccc)",
+        border: "1px solid rgba(68,170,255,0.35)",
+        boxShadow: "0 0 30px rgba(26,92,255,0.25)",
+      }}>
       {label}
     </button>
   );
 }
 
 function PwInput({ value, onChange, show, onToggle, placeholder }: {
-  value: string; onChange: (v: string) => void; show: boolean; onToggle: () => void; placeholder: string;
+  value: string; onChange: (v: string) => void;
+  show: boolean; onToggle: () => void; placeholder?: string;
 }) {
   return (
     <div className="relative">
-      <input type={show ? "text" : "password"} value={value}
-        onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-white placeholder-white/18 text-sm outline-none focus:border-[#4af]/55 transition-colors pr-11" />
+      <input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-xl px-4 py-3 text-white placeholder-white/25 text-sm outline-none transition-all pr-10"
+        style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)" }}
+        onFocus={e => { e.currentTarget.style.borderColor = "rgba(68,170,255,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(68,170,255,0.12)"; }}
+        onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.boxShadow = "none"; }}
+      />
       <button type="button" onClick={onToggle}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/28 hover:text-white/60 transition-colors">
-        {show ? <EyeOff size={16} /> : <Eye size={16} />}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors">
+        {show ? <EyeOff size={15} /> : <Eye size={15} />}
       </button>
     </div>
   );

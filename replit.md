@@ -224,7 +224,7 @@ bash github-sync.sh push "NovaBall: güncelleme"
 - **Kontroller sekmesi**: WASD / Space / Shift tuşları oyun içinde özelleştirilebilir; ayarlar localStorage'a kaydedilir; "Varsayılana sıfırla" butonu
 - **Hakkında sekmesi**: Sürüm bilgisi, kuruluş tarihi, destek e-postası, yasal metin
 - Ana menüdeki oyuncu kartına ⚙️ Settings butonu eklendi (LogOut'un yanına)
-- `change_username` ve `change_display_name` Supabase SECURITY DEFINER RPC'leri (`supabase/migrations/20260615_005_settings_changes.sql`)
+- `change_username` ve `change_display_name` Supabase SECURITY DEFINER RPC'leri
 
 #### 🎯 Tuş Atamaları
 - `utils/keybindings.ts`: `Keybindings` arayüzü, `DEFAULT_KEYBINDINGS`, `ALT_KEYS`, `KEY_LABEL`, `loadKeybindings`, `saveKeybindings`
@@ -232,79 +232,17 @@ bash github-sync.sh push "NovaBall: güncelleme"
 - Alt tuşlar (ArrowKeys + KeyX + ShiftRight) her zaman aktif; yalnızca birincil tuşlar özelleştirilebilir
 
 #### 🐛 Hata Düzeltmeleri
-- **Multiplayer çift-şarj**: `physicsStep` artık `localPlayer` parametresi alıyor; client tarafında yalnızca kendi kick charge'ı hesaplanır — remote oyuncuların ghost charge üretmesi önlendi
-- **Kendi kalesine atma önlemi**: Sol kaleye kırmızı, sağ kaleye mavi oyuncu attığında gol sayılmaz — top geri sektirilerek sahaya döner (hem AI hem multiplayer'da geçerli)
+- **Multiplayer çift-şarj**: `physicsStep` artık `localPlayer` parametresi alıyor
+- **Kendi kalesine atma önlemi**: Sol kaleye kırmızı, sağ kaleye mavi oyuncu attığında gol sayılmaz
 
 ---
 
 ### v0.0.6 — Premium Landing Page, Maça Katılım & HaxBall Özel Odalar (14 Haziran 2026)
-
-> Yeni kullanıcılar için tam ekran premium karşılama sayfası, devam eden maçlara mid-match katılım, host tek başına maç başlatma ve HaxBall tarzı format seçimi ile lobi yenileme.
-
-#### 🌐 Premium Karşılama Sayfası (LandingPage)
-- **Animasyonlu hero**: Yüzen top efekti, scroll-aware cam navbar, "Hemen Oyna" ve "Giriş Yap" CTA butonları
-- **Özellikler bölümü**: 6 kart — Gerçek Zamanlı Çok Oyunculu, Rank Sistemi, Özel Odalar, Mobil, AI Modu, Tarayıcı Tabanlı
-- **Oyun modları bölümü**: 1v1–5v5 emoji kartları + özel oda tanıtım bandı
-- **Rank sistemi bölümü**: 7 kademe (⚙️→🏆), RP aralıkları, kural kartları
-- **Destek bölümü**: `support.novaballofficial@gmail.com` e-posta kartı + 5 madde SSS accordion
-- **"Nasıl Oynanır"**: 4 adımlı animasyonlu kılavuz
-- Oturumsuz kullanıcı artık `login` yerine `landing` ile karşılanır; giriş/çıkış akışı güncellendi
-
-#### 🎮 HaxBall Tarzı Özel Oda Sistemi
-- **Format seçimi**: Oda oluştururken 1v1 / 2v2 / 3v3 / 4v4 / 5v5 butonuyla oyuncu sayısı seçimi
-- **Premium lobi**: Kırmızı/Mavi iki takım kolonu, dolu/boş oyuncu slotları, takım değiştirme butonu, animasyonlu kartlar
-- **Sohbet paneli**: Lobi içine entegre, collapsible, mesaj sayacı rozeti
-- **Oyuncu sayacı**: Anlık toplam/max gösterge ve doluluk barı
-
-#### ⚡ Maça Devam Eden Odaya Katılım (Mid-Match Join)
-- **Host tek başına başlatabilir**: Minimum oyuncu şartı kaldırıldı — solo pratik desteği
-- **CANLI etiket**: Devam eden odalar listede `⚡ CANLI` etiketiyle ayrı bölümde gösterilir
-- **Takım seçim ekranı**: Devam eden odaya giren oyuncu Kırmızı / Mavi seçimi yapar
-- **Direkt maça yönlendirme**: Takım seçilince lobi beklenmeden `MultiplayerBoard`'a geçilir
-- **Oda yönetimi**: HOST çıkarsa oda silinir · GUEST çıkarsa sadece slot boşalır · her iki takım da boşalırsa oda temizlenir
-
-#### 🔒 Güvenlik & Veritabanı
-- `room_join_team` RPC: `'waiting'` durumuna ek olarak `'playing'` durumundaki odaya katılım desteklendi
-- `custom_rooms UPDATE` RLS politikası düzeltildi (`USING true` → host-only doğrulama)
-- `custom_rooms` tablosundan `ranked` kolonu kaldırıldı — özel odalar her zaman serbest
-- `validate_room_teams` trigger: takım boyutunu INSERT/UPDATE anında veritabanı seviyesinde denetler
-- Master şema (`001`): `CREATE OR REPLACE` / `IF NOT EXISTS` ile idempotent, güvenle yeniden çalıştırılabilir
-- `migration 004`: mid-match join için `room_join_team` RPC güncellemesi ayrı dosyada
-
----
-
 ### v0.0.5 — 60 FPS Akıcılık & Kick Charge Görünürlüğü (13 Haziran 2026)
-
-> Multiplayer kasma sorunu çözüldü, tüm oyuncuların güç barı görünür hale getirildi.
-
-#### ⚡ 60 FPS Akıcılık
-- **Lerp reconciliation**: Host durumu gelince pozisyonlar artık hard-snap yerine yumuşak lerp ile düzeltilir — jitter tamamen giderildi
-- **Lokal tahmin koruması**: Kendi oyuncun için hata küçükse düzeltme atlanır, büyükse %15 oranında yumuşak düzeltme uygulanır
-- **Uzak oyuncu interpolasyonu**: Diğer oyuncular %30 lerp ile güncellenir — hareketler pürüzsüz görünür
-
-#### 📡 Adaptif Sync Hızı
-- **WebSocket (birincil)**: Host 33ms (~30fps), Client 16ms (~60fps)
-- **Supabase fallback**: Host 80ms (~12fps), Client 50ms (~20fps) — 429 rate limit riski yoktur
-- `RoomConnection.isWebSocket` özelliği ile transport tipi sorgulanır
-
-#### 🎯 Kick Charge Görünürlüğü
-- Tüm oyuncuların güç barı artık herkese görünür (önceki: sadece lokal + host)
-- Host `kickCharge` değerlerini `game_state` içinde yayınlar
-- Client, aldığı `kickCharge` değerini her oyuncu için doğrudan render eder
-
----
-
 ### v0.0.4 — Stabilite & Ağ Optimizasyonu (13 Haziran 2026)
-- Matchmaking, multiplayer stabilite, forfeit sistemi, Supabase maç kaydı
-
 ### v0.0.3 — Çok Oyunculu Altyapı (12 Haziran 2026)
-- Matchmaking (1v1–5v5), Özel Odalar, Realtime senkronizasyon, Maç içi sohbet
-
 ### v0.0.2 — Auth & Profil (12 Haziran 2026)
-- Kayıt/giriş/e-posta doğrulama, Share Card, Aktif oyuncu göstergesi
-
 ### v0.0.1 — İlk Sürüm (11 Haziran 2026)
-- Temel oyun, AI rakip, fizik motoru, rank sistemi, mobil destek
 
 ## Kullanıcı Tercihleri
 
@@ -321,4 +259,3 @@ bash github-sync.sh push "NovaBall: güncelleme"
 - `pnpm-workspace` skill: workspace yapısı, TypeScript kurulumu
 - `supabase/` klasörü: SQL migration dosyaları (Supabase SQL Editor'da çalıştır)
 - `supabase/migrations/20260614_001_novaball_schema.sql`: Tam şema (tüm tablolar, RLS, RPC'ler)
-- `supabase/migrations/20260614_002_custom_rooms_update.sql`: max_players default → 10 güncelleme
