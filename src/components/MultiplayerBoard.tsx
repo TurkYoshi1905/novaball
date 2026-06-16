@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send } from "lucide-react";
+import { MessageCircle, X, Send, ShieldOff } from "lucide-react";
 import type { MatchSession, Score, ChatMessage, Team, MPResult } from "../types/game";
 import { CANVAS_WIDTH, CANVAS_HEIGHT, RANKED_DURATION_MS } from "../types/game";
 import { useMultiplayerPhysics } from "../hooks/useMultiplayerPhysics";
@@ -184,6 +184,10 @@ export default function MultiplayerBoard({
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   };
 
+  // Terk engeli: 2v2-5v5 ranked maçlarda forfeit yasak
+  const [forfeitBlocked, setForfeitBlocked] = useState(false);
+  const forfeitBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ─── Ayrıl: forfeit yayınla + sonuç ekranı göster (her iki oyuncuya da) ───
   const handleLeave = useCallback(() => {
     // Özel oda maçları: forfeit gönderme — oda açık kalır, diğer oyuncular devam eder
@@ -196,11 +200,18 @@ export default function MultiplayerBoard({
       onLeave();
       return;
     }
+    // 2v2-5v5 ranked: terk engeli — takım eşitsizliği yaratır
+    if (ranked && match.mode !== "1v1") {
+      setForfeitBlocked(true);
+      if (forfeitBlockTimerRef.current) clearTimeout(forfeitBlockTimerRef.current);
+      forfeitBlockTimerRef.current = setTimeout(() => setForfeitBlocked(false), 3500);
+      return;
+    }
     // Rakibe forfeit bildir — mevcut WS bağlantısı üzerinden (hemen gönderilir, async değil)
     sendForfeit(myTeam);
     // Kendi sonuç ekranımızı göster (kaybeden olarak)
     finishGame(scoreRef.current, {}, true, myTeam);
-  }, [sendForfeit, myTeam, finishGame, scoreRef, onLeave, isCustomRoom]);
+  }, [sendForfeit, myTeam, finishGame, scoreRef, onLeave, isCustomRoom, ranked, match.mode]);
 
   const timeDisplay = ranked ? fmtCountdown(gameTimeMs) : fmtCountup(gameTimeMs);
   const urgent      = ranked && gameTimeMs < 15_000;
@@ -258,6 +269,33 @@ export default function MultiplayerBoard({
           <div className={`hud-dot hud-dot-${oppTeam}`} />
         </div>
       </div>
+
+      {/* ── Forfeit engeli toast ── */}
+      <AnimatePresence>
+        {forfeitBlocked && (
+          <motion.div
+            initial={{ opacity: 0, y: -16, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0,   scale: 1    }}
+            exit={{   opacity: 0, y: -12,  scale: 0.95 }}
+            transition={{ duration: 0.22 }}
+            className="absolute top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl pointer-events-none"
+            style={{
+              background: "rgba(10,16,30,0.97)",
+              border: "1px solid rgba(251,146,60,0.5)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(251,146,60,0.12)",
+              backdropFilter: "blur(12px)",
+            }}
+          >
+            <ShieldOff size={15} style={{ color: "#fb923c", flexShrink: 0 }} />
+            <span style={{ color: "#fb923c", fontWeight: 700, fontSize: 13 }}>
+              Takım maçında maçı terkedemezsin
+            </span>
+            <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 600 }}>
+              ({match.mode})
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Canvas alanı ── */}
       <div className="game-canvas-zone">

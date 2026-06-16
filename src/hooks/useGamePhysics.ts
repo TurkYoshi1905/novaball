@@ -333,54 +333,111 @@ function updatePhysics(s: GR, dtF: number, mob: MobileInput | null, kb: Keybindi
 
 function updateAI(s: GR, dtF: number) {
   const { ball, aiPlayer } = s;
+
+  // ── Stamina: sprint koşulları genişletildi ────────────────────────────────
   const playerClose = dist2(s.player.x, s.player.y, aiPlayer.x, aiPlayer.y) < PLAYER_RADIUS * 3.5;
-  const wantAISprint = s.hasBall === "player" && playerClose;
+  // Top AI kalesine hızla geliyorsa veya oyuncu topla yakındaysa sprint yap
+  const ballRushingGoal = s.hasBall === null && ball.vx < -2.5 && ball.x < CENTER_X + 80;
+  const wantAISprint    = (s.hasBall === "player" && playerClose) || ballRushingGoal;
   if (wantAISprint && s.aiStamina >= STAMINA_SPRINT_MIN) {
-    s.aiSprinting = true; s.aiStamina = Math.max(0, s.aiStamina - STAMINA_DRAIN*.8*dtF);
+    s.aiSprinting = true; s.aiStamina = Math.max(0, s.aiStamina - STAMINA_DRAIN * .85 * dtF);
   } else {
-    s.aiSprinting = false; s.aiStamina = Math.min(STAMINA_MAX, s.aiStamina + STAMINA_RECOVER*dtF);
+    s.aiSprinting = false; s.aiStamina = Math.min(STAMINA_MAX, s.aiStamina + STAMINA_RECOVER * dtF);
   }
   if (s.aiStamina <= 0) s.aiSprinting = false;
-  const aiSpd = s.aiSprinting ? AI_MAX_SPEED*SPRINT_SPEED_MULT*.9 : AI_MAX_SPEED;
-  const aiAcc = s.aiSprinting ? AI_ACCEL*SPRINT_ACCEL_MULT : AI_ACCEL;
+  const aiSpd = s.aiSprinting ? AI_MAX_SPEED * SPRINT_SPEED_MULT * .9 : AI_MAX_SPEED;
+  const aiAcc = s.aiSprinting ? AI_ACCEL    * SPRINT_ACCEL_MULT        : AI_ACCEL;
 
-  const targetX = s.hasBall === "ai" ? FIELD_LEFT + 20 : ball.x + (s.hasBall === "player" ? 10 : 30);
-  const targetY = s.hasBall === "ai" ? CENTER_Y : ball.y;
+  // ── Hedef hesaplama — üç farklı mod ────────────────────────────────────────
+  let targetX: number, targetY: number;
+
+  if (s.hasBall === "ai") {
+    // Topa sahip: iyi şut pozisyonu — kaleye yakın ama düz hizada değil
+    // Oyunun zamanına göre hafif rastgele offsetle yaklaşım çeşitlendir
+    const approachX = FIELD_LEFT + 130;
+    // Mevcut Y konumunu orta banda doğru hafifçe çek (aşırı köşeye çıkmasın)
+    const boundedY  = clamp(aiPlayer.y, CENTER_Y - 100, CENTER_Y + 100);
+    targetX = approachX;
+    targetY = boundedY;
+  } else if (s.hasBall === null) {
+    // Top serbest: topun gideceği yeri öngör ve orada karşıla
+    const ballSpd    = Math.sqrt(ball.vx ** 2 + ball.vy ** 2);
+    const lookAhead  = clamp(8 + ballSpd * 2.2, 8, 28);
+    const predX = clamp(ball.x + ball.vx * lookAhead, FIELD_LEFT + PLAYER_RADIUS + 8, FIELD_RIGHT - PLAYER_RADIUS - 8);
+    const predY = clamp(ball.y + ball.vy * lookAhead, FIELD_TOP  + PLAYER_RADIUS + 8, FIELD_BOTTOM - PLAYER_RADIUS - 8);
+    // Top AI kalesine yaklaşıyorsa savunma pozisyonu — kale ile top arasına gir
+    if (ball.x < CENTER_X && ball.vx < 0) {
+      // Topla kale arasına yerleş
+      targetX = clamp((predX + FIELD_LEFT) * .5 + 20, FIELD_LEFT + PLAYER_RADIUS, CENTER_X);
+      targetY = predY;
+    } else {
+      targetX = predX;
+      targetY = predY;
+    }
+  } else {
+    // Oyuncu topla: oyuncunun kaleye giden yolunu kes
+    const toGoalX = FIELD_LEFT - s.player.x;
+    const toGoalY = CENTER_Y   - s.player.y;
+    const tgLen   = Math.sqrt(toGoalX ** 2 + toGoalY ** 2) || 1;
+    // Oyuncunun önüne geç (kale yönünde PLAYER_RADIUS*3.5 mesafe)
+    const intercX = s.player.x + (toGoalX / tgLen) * PLAYER_RADIUS * 3.5;
+    const intercY = s.player.y + (toGoalY / tgLen) * PLAYER_RADIUS * 3.5;
+    targetX = clamp(intercX, FIELD_LEFT + PLAYER_RADIUS, FIELD_RIGHT - PLAYER_RADIUS);
+    targetY = clamp(intercY, FIELD_TOP  + PLAYER_RADIUS, FIELD_BOTTOM - PLAYER_RADIUS);
+  }
+
   const dx = targetX - aiPlayer.x, dy = targetY - aiPlayer.y;
-  const d  = Math.sqrt(dx*dx + dy*dy);
+  const d  = Math.sqrt(dx * dx + dy * dy);
 
   if (d > 4) {
-    const nx = dx/d, ny = dy/d;
-    aiPlayer.vx = clamp((aiPlayer.vx + nx*aiAcc*dtF)*PLAYER_FRICTION, -aiSpd, aiSpd);
-    aiPlayer.vy = clamp((aiPlayer.vy + ny*aiAcc*dtF)*PLAYER_FRICTION, -aiSpd, aiSpd);
-    const aiS = Math.sqrt(aiPlayer.vx**2 + aiPlayer.vy**2);
-    if (aiS > 0.3) { s.aiFacingX = aiPlayer.vx/aiS; s.aiFacingY = aiPlayer.vy/aiS; }
+    const nx = dx / d, ny = dy / d;
+    aiPlayer.vx = clamp((aiPlayer.vx + nx * aiAcc * dtF) * PLAYER_FRICTION, -aiSpd, aiSpd);
+    aiPlayer.vy = clamp((aiPlayer.vy + ny * aiAcc * dtF) * PLAYER_FRICTION, -aiSpd, aiSpd);
+    const aiS = Math.sqrt(aiPlayer.vx ** 2 + aiPlayer.vy ** 2);
+    if (aiS > 0.3) { s.aiFacingX = aiPlayer.vx / aiS; s.aiFacingY = aiPlayer.vy / aiS; }
   } else { aiPlayer.vx *= PLAYER_FRICTION; aiPlayer.vy *= PLAYER_FRICTION; }
 
   if (s.hasBall === "ai") {
     attachBall(aiPlayer, s.ball, s.aiFacingX, s.aiFacingY);
-    aiPlayer.x += aiPlayer.vx*dtF; aiPlayer.y += aiPlayer.vy*dtF;
+    aiPlayer.x += aiPlayer.vx * dtF; aiPlayer.y += aiPlayer.vy * dtF;
     clampField(aiPlayer); attachBall(aiPlayer, s.ball, s.aiFacingX, s.aiFacingY);
     if (s.isSprinting && dist2(s.player.x, s.player.y, aiPlayer.x, aiPlayer.y) < STEAL_DIST)
       stealBall(s, "player");
   } else {
-    aiPlayer.x += aiPlayer.vx*dtF; aiPlayer.y += aiPlayer.vy*dtF;
+    aiPlayer.x += aiPlayer.vx * dtF; aiPlayer.y += aiPlayer.vy * dtF;
     clampField(aiPlayer);
     if (s.hasBall === null && dist2(aiPlayer.x, aiPlayer.y, ball.x, ball.y) <= POSSESS_DIST) {
-      if (Math.sqrt(ball.vx**2 + ball.vy**2) < 9) {
+      if (Math.sqrt(ball.vx ** 2 + ball.vy ** 2) < 9) {
         s.hasBall = "ai"; attachBall(aiPlayer, s.ball, s.aiFacingX, s.aiFacingY);
       }
     }
   }
 
+  // ── Şut: köşelere nişan al ─────────────────────────────────────────────────
   if (s.aiKickCd > 0) s.aiKickCd -= dtF;
   if (s.aiKickCd <= 0) {
     if (s.hasBall === "ai") {
       const distGoal = dist2(aiPlayer.x, aiPlayer.y, FIELD_LEFT, CENTER_Y);
-      if (distGoal < 260 || Math.random() < 0.004) {
+      if (distGoal < 300) {
+        // Kale köşelerinden birine nişan al — her seferinde rastgele seç
+        const aimTop    = GOAL_TOP   + 18;
+        const aimBottom = GOAL_BOTTOM - 18;
+        const aimY      = Math.random() < 0.5 ? aimTop : aimBottom;
+        const shootDx   = FIELD_LEFT - aiPlayer.x;
+        const shootDy   = aimY - aiPlayer.y;
+        const sLen      = Math.sqrt(shootDx ** 2 + shootDy ** 2) || 1;
+        const fx        = shootDx / sLen, fy = shootDy / sLen;
         s.lastShooterTeam = "blue";
-        releaseKick(aiPlayer, s.ball, s.aiShootFx, AI_KICK_POWER, s.aiFacingX, s.aiFacingY);
+        s.aiFacingX = fx; s.aiFacingY = fy;
+        releaseKick(aiPlayer, s.ball, s.aiShootFx, AI_KICK_POWER, fx, fy);
         s.hasBall = null; s.aiKickCd = 25;
+      } else if (Math.random() < 0.0025) {
+        // Ara sıra erken şut denemesi (uzaktan)
+        s.lastShooterTeam = "blue";
+        const earlyDx = FIELD_LEFT - aiPlayer.x, earlyDy = CENTER_Y - aiPlayer.y;
+        const eLen    = Math.sqrt(earlyDx ** 2 + earlyDy ** 2) || 1;
+        releaseKick(aiPlayer, s.ball, s.aiShootFx, AI_KICK_POWER * .78, earlyDx / eLen, earlyDy / eLen);
+        s.hasBall = null; s.aiKickCd = 32;
       }
     } else if (s.hasBall === null && dist2(aiPlayer.x, aiPlayer.y, ball.x, ball.y) < AI_KICK_RANGE) {
       s.lastShooterTeam = "blue";
