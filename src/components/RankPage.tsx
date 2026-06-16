@@ -1,8 +1,9 @@
 import { useState } from "react";
 import {
-  ChevronLeft, Shield, Zap, TrendingUp, Trophy, Target,
-  ArrowUp, CheckCircle2, Swords, Crown, BarChart3, Star,
-  Lock, ChevronRight, Flame, Award, Info,
+  ChevronLeft, Shield, Zap, TrendingUp, TrendingDown, Trophy, Target,
+  ArrowUp, ArrowDown, CheckCircle2, Swords, Crown, BarChart3, Star,
+  Lock, ChevronRight, Flame, Award, Info, BookOpen, Minus,
+  Users, Sword,
 } from "lucide-react";
 import { ALL_RANKS, RANK_TIERS, getRankForRP, getRPProgressInRank, loadRP } from "../utils/rankSystem";
 
@@ -182,42 +183,163 @@ export default function RankPage({ onBack }: Props) {
             </div>
           </div>
 
-          {/* ── RP NEDİR? ─────────────────────────────────────────── */}
-          <div className="rounded-2xl p-5 flex flex-col gap-3 relative overflow-hidden"
-            style={{ background: "rgba(68,170,255,0.07)", border: "1px solid rgba(68,170,255,0.22)" }}>
-            <div className="absolute top-0 left-0 right-0 h-px"
-              style={{ background: "linear-gradient(90deg,transparent,rgba(68,170,255,0.6),transparent)" }} />
-            <div className="flex items-center gap-2">
-              <Info size={16} className="text-[#4aaeff]" />
-              <span className="text-[#4aaeff] font-black text-sm uppercase tracking-wider">RP Nedir?</span>
-            </div>
-            <p className="text-white/70 text-sm leading-relaxed">
-              <span className="text-white font-bold">RP (Rank Puanı)</span>, rekabetçi maçlarda kazandığın veya
-              kaybettiğin puandır. Yeterli RP biriktirince bir üst ranka yükselirsin;
-              RP'n belirli bir eşiğin altına düşerse bir alt ranka inersin.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
-                style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)" }}>
-                <Zap size={14} className="text-[#4ade80] flex-shrink-0" />
-                <div>
-                  <p className="text-[#4ade80] font-black text-xs">Kazanınca</p>
-                  <p className="text-white/55 text-[11px]">+10 ile +25 RP</p>
-                </div>
+          {/* ── RP NEDİR? (Kapsamlı Bölüm) ───────────────────────── */}
+          <div className="rounded-3xl overflow-hidden relative"
+            style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.1)" }}>
+
+            {/* Bölüm başlığı */}
+            <div className="flex items-center gap-3 px-5 pt-5 pb-4"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(68,170,255,0.15)", border: "1px solid rgba(68,170,255,0.3)" }}>
+                <BookOpen size={16} className="text-[#4aaeff]" />
               </div>
-              <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
-                style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)" }}>
-                <TrendingUp size={14} className="text-[#f87171] flex-shrink-0" style={{ transform: "rotate(180deg)" }} />
-                <div>
-                  <p className="text-[#f87171] font-black text-xs">Kaybedince</p>
-                  <p className="text-white/55 text-[11px]">−10 ile −20 RP</p>
-                </div>
+              <div>
+                <p className="text-white font-black text-base leading-none">RP — Rank Puanı</p>
+                <p className="text-white/35 text-[11px] mt-0.5 font-semibold uppercase tracking-wider">Nasıl Çalışır?</p>
+              </div>
+              <div className="ml-auto px-2.5 py-1 rounded-lg flex-shrink-0"
+                style={{ background: "rgba(68,170,255,0.1)", border: "1px solid rgba(68,170,255,0.22)" }}>
+                <span className="text-[#4aaeff] font-black text-xs">RP</span>
               </div>
             </div>
-            <p className="text-white/35 text-[11px] leading-relaxed">
-              * Beraberlikte RP değişimi yoktur. Takım maçlarında (2v2–5v5) kaybeden takımdaki
-              tüm oyuncular aynı RP miktarını kaybeder.
-            </p>
+
+            <div className="px-5 pb-5 flex flex-col gap-5 pt-4">
+
+              {/* Açıklama paragrafı */}
+              <p className="text-white/65 text-sm leading-[1.75]">
+                <span className="text-white font-bold">RP</span>, yani{" "}
+                <span className="text-[#4aaeff] font-bold">Rank Puanı</span>, NovaBall'un
+                rekabetçi modunda kazandığın veya kaybettiğin puanı ifade eder.
+                Topladığın RP miktarı, hangi{" "}
+                <span className="text-white font-semibold">rank kademesinde</span> yer aldığını
+                doğrudan belirler. Yeterince RP biriktirince bir üst ranka yükselir,
+                çok fazla kaybedersen alt ranka düşersin.
+              </p>
+
+              {/* RP Kazanma / Kaybetme — büyük kartlar */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Kazanma */}
+                <div className="rounded-2xl p-4 flex flex-col gap-3 relative overflow-hidden"
+                  style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.22)" }}>
+                  <div className="absolute top-0 left-0 right-0 h-px"
+                    style={{ background: "linear-gradient(90deg,transparent,rgba(74,222,128,0.7),transparent)" }} />
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.3)" }}>
+                      <TrendingUp size={15} className="text-[#4ade80]" />
+                    </div>
+                    <span className="text-[#4ade80] font-black text-sm">Kazanınca</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-[#4ade80] font-black text-2xl">+10</span>
+                    <span className="text-[#4ade80]/60 font-bold text-sm">– +25</span>
+                  </div>
+                  <p className="text-white/50 text-[11px] leading-relaxed">
+                    Attığın gol sayısına göre artar. Daha fazla gol → daha fazla RP.
+                  </p>
+                </div>
+                {/* Kaybetme */}
+                <div className="rounded-2xl p-4 flex flex-col gap-3 relative overflow-hidden"
+                  style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.22)" }}>
+                  <div className="absolute top-0 left-0 right-0 h-px"
+                    style={{ background: "linear-gradient(90deg,transparent,rgba(248,113,113,0.7),transparent)" }} />
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ background: "rgba(248,113,113,0.15)", border: "1px solid rgba(248,113,113,0.3)" }}>
+                      <TrendingDown size={15} className="text-[#f87171]" />
+                    </div>
+                    <span className="text-[#f87171] font-black text-sm">Kaybedince</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-[#f87171] font-black text-2xl">−10</span>
+                    <span className="text-[#f87171]/60 font-bold text-sm">– −20</span>
+                  </div>
+                  <p className="text-white/50 text-[11px] leading-relaxed">
+                    Rastgele belirlenir. Kaybetmek her zaman bir risk taşır.
+                  </p>
+                </div>
+              </div>
+
+              {/* Özel durumlar listesi */}
+              <div className="flex flex-col gap-2">
+                <p className="text-white/35 text-[11px] font-bold uppercase tracking-wider">Özel Durumlar</p>
+                {[
+                  {
+                    icon: <Minus size={13} />,
+                    color: "#a3a3a3",
+                    label: "Beraberlik",
+                    desc: "RP değişimi olmaz — ne kazanırsın ne kaybedersin.",
+                  },
+                  {
+                    icon: <Users size={13} />,
+                    color: "#a78bfa",
+                    label: "Takım Maçı (2v2 – 5v5)",
+                    desc: "Kaybeden takımdaki tüm oyuncular aynı rastgele RP miktarını kaybeder.",
+                  },
+                  {
+                    icon: <Sword size={13} />,
+                    color: "#fb923c",
+                    label: "Maçtan Ayrılma (Forfeit)",
+                    desc: "Ayrılan oyuncu −15 RP ceza alır. Kalan oyuncu +10 RP kazanır.",
+                  },
+                  {
+                    icon: <Shield size={13} />,
+                    color: "#60a5fa",
+                    label: "RP Alt Sınırı",
+                    desc: "RP hiçbir zaman 0'ın altına düşemez. En kötü ihtimalle sıfırda kalırsın.",
+                  },
+                ].map(item => (
+                  <div key={item.label}
+                    className="flex items-start gap-3 px-3.5 py-3 rounded-xl"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                      style={{ background: `${item.color}18`, color: item.color, border: `1px solid ${item.color}28` }}>
+                      {item.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-xs" style={{ color: item.color }}>{item.label}</p>
+                      <p className="text-white/45 text-[11px] leading-relaxed mt-0.5">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Rank yükseliş / düşüş banner */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl relative overflow-hidden"
+                  style={{ background: "rgba(250,204,21,0.07)", border: "1px solid rgba(250,204,21,0.2)" }}>
+                  <div className="absolute top-0 left-0 right-0 h-px"
+                    style={{ background: "linear-gradient(90deg,transparent,rgba(250,204,21,0.5),transparent)" }} />
+                  <ArrowUp size={18} className="text-[#facc15] flex-shrink-0" />
+                  <div>
+                    <p className="text-[#facc15] font-black text-xs">Rank Yükseliş</p>
+                    <p className="text-white/40 text-[11px] leading-relaxed">RP eşiğini aşınca otomatik üst ranka çıkarsın.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl relative overflow-hidden"
+                  style={{ background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.2)" }}>
+                  <div className="absolute top-0 left-0 right-0 h-px"
+                    style={{ background: "linear-gradient(90deg,transparent,rgba(248,113,113,0.5),transparent)" }} />
+                  <ArrowDown size={18} className="text-[#f87171] flex-shrink-0" />
+                  <div>
+                    <p className="text-[#f87171] font-black text-xs">Rank Düşüş</p>
+                    <p className="text-white/40 text-[11px] leading-relaxed">RP eşiğinin altına düşünce alt ranka inersin.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Alt dipnot */}
+              <div className="flex items-start gap-2 px-3.5 py-3 rounded-xl"
+                style={{ background: "rgba(68,170,255,0.06)", border: "1px solid rgba(68,170,255,0.15)" }}>
+                <Info size={13} className="text-[#4aaeff] flex-shrink-0 mt-0.5" />
+                <p className="text-white/45 text-[11px] leading-relaxed">
+                  RP yalnızca <span className="text-white/65 font-semibold">Rekabetçi Mod</span> maçlarında değişir.
+                  Özel oda (Serbest Maç) ve AI antrenman maçları RP'yi etkilemez.
+                </p>
+              </div>
+
+            </div>
           </div>
 
           {/* ── KURALLAR ──────────────────────────────────────────── */}
