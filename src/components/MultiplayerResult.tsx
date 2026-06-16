@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Trophy, TrendingUp, Zap } from "lucide-react";
+import { Trophy, TrendingUp, TrendingDown, Zap } from "lucide-react";
 import type { MPResult, Team } from "../types/game";
 import { getRankForRP } from "../utils/rankSystem";
 
@@ -16,7 +16,7 @@ const TEAM_LABEL: Record<Team, string> = { red: "Kırmızı", blue: "Mavi" };
 export default function MultiplayerResult({ result, onMenu, onPlayAgain }: Props) {
   const {
     winnerTeam, redGoals, blueGoals,
-    myTeam, rpGained, prevRP, newRP,
+    myTeam, rpGained, rpLost, prevRP, newRP,
     playerStats, mode, isRanked, forfeit, localUsername,
   } = result;
 
@@ -25,6 +25,7 @@ export default function MultiplayerResult({ result, onMenu, onPlayAgain }: Props
   const myRank    = getRankForRP(newRP);
   const prevRank  = getRankForRP(prevRP);
   const rankUp    = isRanked && newRP > prevRP && myRank.fullName !== prevRank.fullName;
+  const rankDown  = isRanked && newRP < prevRP && myRank.fullName !== prevRank.fullName;
   const teamColor = TEAM_COLOR[myTeam];
 
   // Temiz sıralama: RP'ye göre (kazananlar > 0, beraberlikte eşit), sonra gol sayısı
@@ -210,8 +211,10 @@ export default function MultiplayerResult({ result, onMenu, onPlayAgain }: Props
                     <div className="flex-shrink-0 w-16 text-right">
                       {p.rpGained > 0 ? (
                         <span className="text-[#4ade80] font-black text-sm">+{p.rpGained}</span>
+                      ) : p.rpLost > 0 ? (
+                        <span className="text-[#f87171] font-black text-sm">−{p.rpLost}</span>
                       ) : (
-                        <span className="text-white/20 text-sm font-semibold">+0</span>
+                        <span className="text-white/20 text-sm font-semibold">±0</span>
                       )}
                     </div>
                   )}
@@ -221,12 +224,12 @@ export default function MultiplayerResult({ result, onMenu, onPlayAgain }: Props
           </div>
         </motion.div>
 
-        {/* ── RP Detay Kartı (sadece ranked + kazandıysa) ── */}
+        {/* ── RP Detay Kartı (ranked + kazandıysa) ── */}
         {isRanked && rpGained > 0 && (
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.35 }}
-            className="flex flex-col gap-3 px-4 py-4 rounded-2xl border border-white/10 bg-white/3"
+            className="flex flex-col gap-3 px-4 py-4 rounded-2xl border border-[#4ade80]/18 bg-[#4ade80]/5"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -238,10 +241,8 @@ export default function MultiplayerResult({ result, onMenu, onPlayAgain }: Props
             <div className="flex items-center justify-between text-sm px-1">
               <span className="text-white/35 tabular-nums">{prevRP} RP</span>
               <div className="flex-1 mx-3 h-1 rounded-full bg-white/8 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-[#4ade80]"
-                  style={{ width: `${Math.min(100, (rpGained / Math.max(1, prevRP + rpGained)) * 100 + 40)}%` }}
-                />
+                <div className="h-full rounded-full bg-[#4ade80]"
+                  style={{ width: `${Math.min(100, (rpGained / Math.max(1, prevRP + rpGained)) * 100 + 40)}%` }} />
               </div>
               <span className="text-white font-bold tabular-nums">{newRP} RP</span>
             </div>
@@ -261,15 +262,53 @@ export default function MultiplayerResult({ result, onMenu, onPlayAgain }: Props
           </motion.div>
         )}
 
-        {/* ── Kazanan takım kutu (sadece ranked + kaybettiysen) ── */}
-        {isRanked && !isDraw && !didWin && (
+        {/* ── RP Kayıp Kartı (ranked + kaybettiysen) ── */}
+        {isRanked && !isDraw && !didWin && rpLost > 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.35 }}
+            className="flex flex-col gap-3 px-4 py-4 rounded-2xl border border-[#f87171]/18 bg-[#f87171]/5"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingDown size={14} className="text-[#f87171]" />
+                <span className="text-white/60 text-sm font-semibold">Rank Puanı</span>
+              </div>
+              <span className="text-[#f87171] font-black text-sm">−{rpLost} RP</span>
+            </div>
+            <div className="flex items-center justify-between text-sm px-1">
+              <span className="text-white/35 tabular-nums">{prevRP} RP</span>
+              <div className="flex-1 mx-3 h-1 rounded-full bg-white/8 overflow-hidden">
+                <div className="h-full rounded-full bg-[#f87171] transition-all"
+                  style={{ width: `${Math.min(100, (rpLost / Math.max(1, prevRP)) * 100 + 30)}%` }} />
+              </div>
+              <span className="text-white font-bold tabular-nums">{newRP} RP</span>
+            </div>
+            {rankDown && (
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+                style={{ background: `${myRank.tier.color}12`, border: `1px solid ${myRank.tier.color}28` }}
+              >
+                <TrendingDown size={14} className="text-[#f87171]" />
+                <span className="text-xs font-bold text-[#f87171]">
+                  {prevRank.tier.icon} {prevRank.fullName} → {myRank.tier.icon} {myRank.fullName} — Rank Düştün!
+                </span>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+
+        {/* ── Beraberlik bilgisi ── */}
+        {isRanked && isDraw && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
             className="flex items-center gap-2 px-4 py-3 rounded-xl border border-white/8 bg-white/2 text-white/30 text-xs"
           >
             <Zap size={12} />
-            <span>Kazanmak için oyna — yenilgide RP kaybı yok.</span>
+            <span>Beraberlikte RP değişimi olmaz.</span>
           </motion.div>
         )}
 

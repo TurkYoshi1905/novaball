@@ -16,6 +16,24 @@ export interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.0.9",
+    date: "16 Haziran 2026",
+    label: "minor",
+    title: "Rekabetçi RP Kaybı, Rank Düşüşü & Arayüz Güncellemeleri",
+    description:
+      "NovaBall v0.0.9; rekabetçi maçlarda yenilgi artık RP kaybına ve olası rank düşüşüne yol açıyor. Rank Sistemi sayfası tamamen yeniden tasarlandı, RP'nin ne olduğu ve nasıl çalıştığı açıkça anlatıldı. Lider Tablosu premium tasarımına kavuştu.",
+    changes: [
+      { type: "feature", text: "Yenilgi cezası eklendi: rekabetçi maçlarda kaybeden oyuncu(lar) rastgele 10–20 RP kaybeder. 1v1'de yalnızca kaybeden, 2v2–5v5'te kaybeden takımdaki tüm oyuncular aynı RP miktarını kaybeder." },
+      { type: "feature", text: "Rank düşüşü sistemi aktif: yeteli RP kaybı yaşandığında oyuncu bir alt ranka iner; sonuç ekranında 'Rank Düştün!' bildirimi gösterilir." },
+      { type: "feature", text: "Forfeit cezası güncellendi: maçtan ayrılan oyuncu 15 RP kaybeder (rakip 10 RP kazanır)." },
+      { type: "improvement", text: "Maç sonucu ekranı güncellendi: kazanınca yeşil +RP kartı, kaybedince kırmızı −RP kartı, beraberlikte nötr ±0 gösterimi. Hem AI hem çok oyunculu modda geçerli." },
+      { type: "improvement", text: "Oyuncu sıralaması tablosunda kaybeden oyuncular için kırmızı '−X RP' etiketi gösterilir." },
+      { type: "design", text: "Rank Sistemi sayfası premium olarak yeniden tasarlandı: hero kart, RP Nedir? bilgi kutusu, kurallar bölümü, accordion tier listesi ve lucide ikonları." },
+      { type: "design", text: "Lider Tablosu yeniden tasarlandı: ilk 3 için özel podium kartları, arama kutusu, Tümü/Aktif sekmeleri, kazanma oranı görsel barları." },
+      { type: "improvement", text: "Landing Page ve Rank Sistemi sayfasında RP kazanç/kayıp bilgileri ve rank düşüş mekanizması açıkça belirtildi." },
+    ],
+  },
+  {
     version: "0.0.8",
     date: "15 Haziran 2026",
     label: "minor",

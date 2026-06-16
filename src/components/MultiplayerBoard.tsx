@@ -6,7 +6,7 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT, RANKED_DURATION_MS } from "../types/game";
 import { useMultiplayerPhysics } from "../hooks/useMultiplayerPhysics";
 import MobileControls from "./MobileControls";
 import { createMobileInput } from "../types/game";
-import { loadRP, saveRP, getRankForRP, calcRPForWin } from "../utils/rankSystem";
+import { loadRP, saveRP, getRankForRP, calcRPForWin, calcRPLoss } from "../utils/rankSystem";
 
 interface Props {
   match:             MatchSession;
@@ -37,13 +37,29 @@ function calcMPRP(
   allPlayers: Array<{ username: string; displayName: string; team: Team }>,
   goalCounts: Record<string, number>,
   score: Score
-): Array<{ username: string; displayName: string; goals: number; rpGained: number; team: Team }> {
-  if (winnerTeam === "draw" || winnerTeam !== myTeam) {
+): Array<{ username: string; displayName: string; goals: number; rpGained: number; rpLost: number; team: Team }> {
+  const loserTeam = winnerTeam === "red" ? "blue" : winnerTeam === "blue" ? "red" : null;
+  // Kaybeden takım için ortak RP kaybı (10–20 arası, herkese aynı değer)
+  const sharedLoss = (winnerTeam !== "draw" && loserTeam) ? calcRPLoss() : 0;
+
+  if (winnerTeam === "draw") {
     return allPlayers.map(p => ({
       username: p.username, displayName: p.displayName,
-      goals: goalCounts[p.username] ?? 0, rpGained: 0, team: p.team,
+      goals: goalCounts[p.username] ?? 0, rpGained: 0, rpLost: 0, team: p.team,
     }));
   }
+
+  if (winnerTeam !== myTeam) {
+    // Lokal oyuncu kaybetti — sadece kaybeden takım rpLost alır
+    return allPlayers.map(p => ({
+      username: p.username, displayName: p.displayName,
+      goals: goalCounts[p.username] ?? 0,
+      rpGained: 0,
+      rpLost: p.team === loserTeam ? sharedLoss : 0,
+      team: p.team,
+    }));
+  }
+
   const totalGoals  = winnerTeam === "red" ? score.red : score.blue;
   const totalRP     = calcRPForWin(totalGoals);
   const winners     = allPlayers.filter(p => p.team === winnerTeam);
@@ -53,11 +69,11 @@ function calcMPRP(
   const distRP = winners.map((p, i) => {
     const g = winnerGoals[i];
     const share = sumGoals > 0 ? g / sumGoals : 1 / winners.length;
-    return { username: p.username, displayName: p.displayName, goals: g, rpGained: Math.round(totalRP * share), team: p.team };
+    return { username: p.username, displayName: p.displayName, goals: g, rpGained: Math.round(totalRP * share), rpLost: 0, team: p.team };
   });
   return [
     ...distRP,
-    ...losers.map(p => ({ username: p.username, displayName: p.displayName, goals: goalCounts[p.username] ?? 0, rpGained: 0, team: p.team })),
+    ...losers.map(p => ({ username: p.username, displayName: p.displayName, goals: goalCounts[p.username] ?? 0, rpGained: 0, rpLost: sharedLoss, team: p.team })),
   ];
 }
 
@@ -106,19 +122,27 @@ export default function MultiplayerBoard({
     }
 
     const didWin  = winnerTeam === myTeam;
+    const isDraw  = winnerTeam === "draw";
     const prevRP  = loadRP();
     const stats   = calcMPRP(winnerTeam, myTeam, allPlayers, goalCounts, score);
     const me      = stats.find(p => p.username === localUsername);
 
     let rpGained = 0;
-    if (ranked && didWin) rpGained = forfeit ? 10 : (me?.rpGained ?? 0);
-    const newRP = prevRP + rpGained;
-    if (rpGained > 0) saveRP(newRP);
+    let rpLost   = 0;
+    if (ranked && !isDraw) {
+      if (didWin) {
+        rpGained = forfeit ? 10 : (me?.rpGained ?? 0);
+      } else {
+        rpLost = forfeit ? 15 : (me?.rpLost ?? calcRPLoss());
+      }
+    }
+    const newRP = Math.max(0, prevRP + rpGained - rpLost);
+    if (rpGained > 0 || rpLost > 0) saveRP(newRP);
 
     onMatchEnd({
       mode: match.mode, isRanked: ranked,
       winnerTeam, redGoals: score.red, blueGoals: score.blue,
-      myTeam, rpGained, prevRP, newRP,
+      myTeam, rpGained, rpLost, prevRP, newRP,
       rankChanged:  getRankForRP(newRP).fullName !== getRankForRP(prevRP).fullName,
       prevRankName: getRankForRP(prevRP).fullName,
       newRankName:  getRankForRP(newRP).fullName,

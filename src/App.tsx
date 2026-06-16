@@ -24,7 +24,7 @@ import MultiplayerBoard from "./components/MultiplayerBoard";
 import MultiplayerResult from "./components/MultiplayerResult";
 import SettingsPage from "./components/SettingsPage";
 import type { AppScreen, MatchResultData, GameMode, MatchSession, CustomRoom, MPResult } from "./types/game";
-import { loadRP, saveRP, getRankForRP, calcRPForWin } from "./utils/rankSystem";
+import { loadRP, saveRP, getRankForRP, calcRPForWin, calcRPLoss } from "./utils/rankSystem";
 import { getPlayerByAuthId, createPlayer, updateLastSeen, saveMatch } from "./lib/db";
 import { leaveRoom } from "./lib/matchmaking";
 
@@ -177,13 +177,14 @@ export default function App() {
     const drew     = playerGoals === aiGoals;
     const prevRP   = loadRP();
     const rpGained = won ? calcRPForWin(playerGoals) : 0;
-    const newRP    = prevRP + rpGained;
+    const rpLost   = (!won && !drew) ? calcRPLoss() : 0;
+    const newRP    = Math.max(0, prevRP + rpGained - rpLost);
     const prevRankName = getRankForRP(prevRP).fullName;
     const newRankName  = getRankForRP(newRP).fullName;
-    if (rpGained > 0) saveRP(newRP);
+    if (rpGained > 0 || rpLost > 0) saveRP(newRP);
     setMatchResult({
       playerGoals, aiGoals, won, drew,
-      rpGained, prevRP, newRP,
+      rpGained, rpLost, prevRP, newRP,
       rankChanged: prevRankName !== newRankName,
       prevRankName, newRankName,
     });
@@ -239,7 +240,7 @@ export default function App() {
     // Sadece ranked maçları Supabase'e kaydet
     if (!result.isRanked) return;
 
-    const { winnerTeam, myTeam, redGoals, blueGoals, rpGained,
+    const { winnerTeam, myTeam, redGoals, blueGoals, rpGained, rpLost,
             prevRP, newRP, localUsername: lUser, opponentUsername, playerStats } = result;
     const myGoals  = myTeam === "red" ? redGoals  : blueGoals;
     const oppGoals = myTeam === "red" ? blueGoals : redGoals;
@@ -247,6 +248,7 @@ export default function App() {
       winnerTeam === "draw" ? "draw" : winnerTeam === myTeam ? "win" : "loss";
     const oppDisplay = playerStats.find(p => p.username !== lUser)?.displayName
       || opponentUsername || "Rakip";
+    void rpLost; // kullanılıyor (saveMatch'e eklenebilir)
     saveMatch({
       username: lUser, opponentName: oppDisplay,
       playerGoals: myGoals, opponentGoals: oppGoals,

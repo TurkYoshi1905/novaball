@@ -145,8 +145,12 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 ### Rank Sistemi
 - 7 kademe × 3 alt rank: toplam 19 rank seviyesi (Demir → Usta).
 - RP localStorage + Supabase `players` tablosunda (dual storage).
-- Yenilgide RP kaybı yok (kazanmak için RP verilir).
-- RP formülü: 1 gol→10, 2→14, 3→18, 4→22, 5+→25 (sadece kazanınca verilir).
+- **Kazanınca RP kazan**: 1 gol→+10, 2→+14, 3→+18, 4→+22, 5+→+25 RP.
+- **Kaybedince RP kaybet**: rastgele 10–20 RP düşer (`calcRPLoss()` utils/rankSystem.ts).
+- **Takım maçlarında** (2v2–5v5) kaybeden takımdaki tüm oyuncular aynı rastgele RP miktarını kaybeder.
+- **Forfeit cezası**: maçtan ayrılan 15 RP kaybeder, kalan oyuncu 10 RP kazanır.
+- RP 0'ın altına düşemez (`Math.max(0, ...)`).
+- Rank düşüşü: RP eşiğin altına düşünce otomatik alt ranka iner; sonuç ekranında bildirim gösterilir.
 
 ### Veritabanı
 - Tüm oyun verisi Supabase'de yaşar (`players`, `match_history`, `matchmaking_queue`, `active_matches`, `custom_rooms`).
@@ -214,6 +218,24 @@ bash github-sync.sh push "NovaBall: güncelleme"
 ```
 
 ## Sürüm Geçmişi
+
+### v0.0.9 — Rekabetçi RP Kaybı, Rank Düşüşü & Arayüz Güncellemeleri (16 Haziran 2026)
+
+> Yenilgi artık 10–20 rastgele RP kaybına, olası rank düşüşüne yol açıyor. Rank Sistemi sayfası premium yeniden tasarım, RP Nedir açıklaması. Lider Tablosu podium + arama + sekmeler. Landing Page rank düşüş bilgisi.
+
+#### ⚔️ RP Kaybı & Rank Düşüşü
+- Kaybeden oyuncu rastgele **10–20 RP** kaybeder (`calcRPLoss()`)
+- 2v2–5v5: kaybeden takımdaki **tüm oyuncular aynı** RP miktarını kaybeder
+- Forfeit: ayrılan 15 RP kaybeder, kalan 10 RP kazanır
+- RP 0'ın altına düşemez
+- Rank eşiğin altına düşünce sonuç ekranında "Rank Düştün!" bildirimi
+
+#### 🎨 Arayüz
+- Rank Sistemi sayfası: hero kart, RP Nedir? kutusu, accordion tier listesi, lucide ikonlar
+- Lider Tablosu: podium, arama, Tümü/Aktif sekmeleri, G.O. barları
+- Sonuç ekranları: yeşil +RP / kırmızı −RP kartları, rank yükseliş/düşüş bildirimleri
+
+---
 
 ### v0.0.7 — Ayarlar, Özelleştirilebilir Tuşlar & Kendi Kalesine Atma Önlemi (15 Haziran 2026)
 

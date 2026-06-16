@@ -14,7 +14,7 @@ interface Props {
 
 export default function MatchResult({ result, username, displayName, onPlayAgain, onMenu }: Props) {
   const [showShare, setShowShare] = useState(false);
-  const { won, drew, rpGained, prevRP, newRP, rankChanged, prevRankName, newRankName, playerGoals, aiGoals } = result;
+  const { won, drew, rpGained, rpLost, prevRP, newRP, rankChanged, prevRankName, newRankName, playerGoals, aiGoals } = result;
   const rank = getRankForRP(newRP);
   const progress = getRPProgressInRank(newRP);
   const nextRankIdx = ALL_RANKS.indexOf(rank);
@@ -67,13 +67,19 @@ export default function MatchResult({ result, username, displayName, onPlayAgain
             </div>
           </div>
 
-          {/* RP Kazanımı */}
-          <div className={`w-full rounded-2xl border px-6 py-5 flex flex-col gap-3 ${rpGained > 0 ? "border-[#4af]/30 bg-[#4af]/5" : "border-white/10 bg-white/4"}`}>
+          {/* RP Kazanımı / Kaybı */}
+          <div className={`w-full rounded-2xl border px-6 py-5 flex flex-col gap-3 ${
+            rpGained > 0 ? "border-[#4ade80]/25 bg-[#4ade80]/5"
+            : rpLost > 0 ? "border-[#f87171]/25 bg-[#f87171]/5"
+            : "border-white/10 bg-white/4"
+          }`}>
             <div className="flex items-center justify-between">
               <span className="text-white/50 text-sm uppercase tracking-widest font-semibold">Rank Puanı</span>
               {rpGained > 0
-                ? <span className="text-[#4af] font-black text-xl">+{rpGained} RP</span>
-                : <span className="text-white/30 font-semibold text-lg">+0 RP</span>
+                ? <span className="text-[#4ade80] font-black text-xl">+{rpGained} RP</span>
+                : rpLost > 0
+                ? <span className="text-[#f87171] font-black text-xl">−{rpLost} RP</span>
+                : <span className="text-white/30 font-semibold text-lg">±0 RP</span>
               }
             </div>
             <div>
@@ -98,11 +104,19 @@ export default function MatchResult({ result, username, displayName, onPlayAgain
                 </div>
               )}
             </div>
-            {rankChanged && (
+            {rankChanged && rpGained > 0 && (
               <div className="flex items-center gap-2 pt-1 border-t border-white/10">
                 <span className="text-yellow-400 text-sm">✨</span>
                 <span className="text-yellow-400 font-bold text-sm">
-                  Rütbe Yükselişi: {prevRankName} → {newRankName}
+                  Rank Yükselişi: {prevRankName} → {newRankName}
+                </span>
+              </div>
+            )}
+            {rankChanged && rpLost > 0 && (
+              <div className="flex items-center gap-2 pt-1 border-t border-white/10">
+                <span className="text-[#f87171] text-sm">📉</span>
+                <span className="text-[#f87171] font-bold text-sm">
+                  Rank Düşüşü: {prevRankName} → {newRankName}
                 </span>
               </div>
             )}

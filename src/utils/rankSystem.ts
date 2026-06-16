@@ -157,6 +157,11 @@ export function calcRPForWin(playerGoals: number): number {
   return 25;
 }
 
+/** Yenilgide kaybedilecek rastgele RP miktarı (10–20 arası) */
+export function calcRPLoss(): number {
+  return Math.floor(Math.random() * 11) + 10; // 10..20
+}
+
 export function loadRP(): number {
   const raw = localStorage.getItem(RP_KEY);
   const n   = parseInt(raw ?? "0", 10);

@@ -28,17 +28,17 @@ const RULES = [
     border: "rgba(68,170,255,0.28)",
   },
   {
-    icon: <Shield size={18} />,
-    title: "Yenilgide Kayıp Yok",
-    desc: "Kaybetsen bile RP düşmez. Sadece kazanarak yükselirsin.",
-    color: "#4ade80",
-    bg: "rgba(74,222,128,0.1)",
-    border: "rgba(74,222,128,0.28)",
+    icon: <TrendingUp size={18} />,
+    title: "Yenilgide RP Kaybet",
+    desc: "Kaybedersen rastgele 10–20 RP düşer. Takım maçlarında (2v2–5v5) tüm kaybeden takım aynı miktarı kaybeder.",
+    color: "#f87171",
+    bg: "rgba(248,113,113,0.1)",
+    border: "rgba(248,113,113,0.28)",
   },
   {
     icon: <ArrowUp size={18} />,
-    title: "Rank Atla",
-    desc: "Yeterli RP topladığında otomatik olarak bir üst ranka çıkarsın.",
+    title: "Rank Atla / Düş",
+    desc: "Yeterli RP topladığında üst ranka çıkarsın. RP belirli bir eşiğin altına düşerse alt ranka inersin.",
     color: "#facc15",
     bg: "rgba(250,204,21,0.1)",
     border: "rgba(250,204,21,0.28)",
@@ -180,6 +180,44 @@ export default function RankPage({ onBack }: Props) {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* ── RP NEDİR? ─────────────────────────────────────────── */}
+          <div className="rounded-2xl p-5 flex flex-col gap-3 relative overflow-hidden"
+            style={{ background: "rgba(68,170,255,0.07)", border: "1px solid rgba(68,170,255,0.22)" }}>
+            <div className="absolute top-0 left-0 right-0 h-px"
+              style={{ background: "linear-gradient(90deg,transparent,rgba(68,170,255,0.6),transparent)" }} />
+            <div className="flex items-center gap-2">
+              <Info size={16} className="text-[#4aaeff]" />
+              <span className="text-[#4aaeff] font-black text-sm uppercase tracking-wider">RP Nedir?</span>
+            </div>
+            <p className="text-white/70 text-sm leading-relaxed">
+              <span className="text-white font-bold">RP (Rank Puanı)</span>, rekabetçi maçlarda kazandığın veya
+              kaybettiğin puandır. Yeterli RP biriktirince bir üst ranka yükselirsin;
+              RP'n belirli bir eşiğin altına düşerse bir alt ranka inersin.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
+                style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)" }}>
+                <Zap size={14} className="text-[#4ade80] flex-shrink-0" />
+                <div>
+                  <p className="text-[#4ade80] font-black text-xs">Kazanınca</p>
+                  <p className="text-white/55 text-[11px]">+10 ile +25 RP</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
+                style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)" }}>
+                <TrendingUp size={14} className="text-[#f87171] flex-shrink-0" style={{ transform: "rotate(180deg)" }} />
+                <div>
+                  <p className="text-[#f87171] font-black text-xs">Kaybedince</p>
+                  <p className="text-white/55 text-[11px]">−10 ile −20 RP</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-white/35 text-[11px] leading-relaxed">
+              * Beraberlikte RP değişimi yoktur. Takım maçlarında (2v2–5v5) kaybeden takımdaki
+              tüm oyuncular aynı RP miktarını kaybeder.
+            </p>
           </div>
 
           {/* ── KURALLAR ──────────────────────────────────────────── */}

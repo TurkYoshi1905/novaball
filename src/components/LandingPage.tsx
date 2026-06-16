@@ -39,7 +39,7 @@ const FEATURES = [
   {
     icon: <Trophy size={22} />,
     title: "Rekabetçi Rank Sistemi",
-    desc: "7 kademe, 19 seviye. Demir'den Usta'ya çıkan yolculukta her gol RP kazandırır.",
+    desc: "7 kademe, 19 seviye. Kazan +10–+25 RP kazan, kaybet −10–20 RP kay. Rank çık ya da düş.",
     color: "#FFD700",
   },
   {
@@ -71,8 +71,8 @@ const FEATURES = [
 const STEPS = [
   { step: "01", title: "Hesap Oluştur",        desc: "Ücretsiz kayıt ol, kullanıcı adını seç." },
   { step: "02", title: "Mod Seç",              desc: "Ranked maç, özel oda veya AI antrenmanı." },
-  { step: "03", title: "Oyna & RP Kazan",      desc: "Gol at, maç kazan, sıralamada yüksel." },
-  { step: "04", title: "Rank'ını Geliştir",    desc: "Demir'den Usta'ya çık, lider tablosunda parla." },
+  { step: "03", title: "Oyna & RP Kazan",      desc: "Maç kazan +RP al; kaybet −RP öde. Risk var, zevk var." },
+  { step: "04", title: "Rank'ını Geliştir",    desc: "Demir'den Usta'ya çık — ya da bir hata ile düş." },
 ];
 
 const FAQ = [
