@@ -266,7 +266,7 @@ bash github-sync.sh push "NovaBall: güncelleme"
 ### v0.0.2 — Auth & Profil (12 Haziran 2026)
 ### v0.0.1 — İlk Sürüm (11 Haziran 2026)
 
-## Kullanıcı Tercihleri
+## User preferences
 
 - **Dil**: Türkçe UI, Türkçe değişken yorumları kabul edilir
 - **Marka**: NovaBall, neon-spor karanlık tema (`#070d16` arka plan, neon yeşil saha)
