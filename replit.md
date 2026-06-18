@@ -330,7 +330,7 @@ bash github-sync.sh push "NovaBall: güncelleme"
 - `pnpm-workspace` skill: workspace yapısı, TypeScript kurulumu
 - `supabase/` klasörü: SQL migration dosyaları (Supabase SQL Editor'da çalıştır)
 - `supabase/migrations/20260614_001_novaball_schema.sql`: Tam şema (tüm tablolar, RLS, RPC'ler) — **ilk kurulumda çalıştır**
-- `supabase/migrations/20260618_003_room_cleanup.sql`: `room_leave` RPC (host çıkışı + stale oda temizliği) — v0.1.1 ile eklendi
+- `supabase/migrations/20260618_003_room_cleanup.sql`: `room_leave` RPC (host çıkışı + stale oda temizliği) — v0.1.1 ile eklendi; `cleanup_stale_rooms()` için `DROP FUNCTION IF EXISTS` eklendi (return type çakışması düzeltildi)
 - `supabase/migrations/20260618_004_room_leave_fix.sql`: `room_leave` RPC JSONB düzeltmesi (guest lobi çıkışı) — v0.1.2 ile eklendi; **mutlaka çalıştır**
 
 ### SQL Çalıştırma Sırası (Supabase SQL Editor)
