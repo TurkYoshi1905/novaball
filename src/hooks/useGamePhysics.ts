@@ -341,7 +341,9 @@ function updateAI(s: GR, dtF: number) {
   const aiAttackingSprint = s.hasBall === "ai" && aiPlayer.x < CENTER_X + 60 && s.aiStamina > 30;
   // Serbest top: AI uzaktaysa hızla üzerine git
   const freeNearGoal     = s.hasBall === null && dist2(aiPlayer.x, aiPlayer.y, ball.x, ball.y) > 100;
-  const wantAISprint     = (s.hasBall === "player" && playerClose) || ballRushingGoal || aiAttackingSprint || freeNearGoal;
+  // Oyuncu topa sahipken AI her zaman sprint yapar — uzaklık fark etmez
+  const aiChasePlayer    = s.hasBall === "player";
+  const wantAISprint     = aiChasePlayer || ballRushingGoal || aiAttackingSprint || freeNearGoal;
 
   if (wantAISprint && s.aiStamina >= STAMINA_SPRINT_MIN) {
     s.aiSprinting = true; s.aiStamina = Math.max(0, s.aiStamina - STAMINA_DRAIN * .82 * dtF);
@@ -386,15 +388,24 @@ function updateAI(s: GR, dtF: number) {
       targetY = predY;
     }
   } else {
-    // Oyuncu topla: sağ kale önündeki geçiş hattını kes — hızlı reaksiyon
-    const toGoalX = FIELD_RIGHT - s.player.x;
-    const toGoalY = CENTER_Y    - s.player.y;
-    const tgLen   = Math.sqrt(toGoalX ** 2 + toGoalY ** 2) || 1;
-    const lookFwd = PLAYER_RADIUS * 4.5;
-    const intercX = s.player.x + (toGoalX / tgLen) * lookFwd;
-    const intercY = s.player.y + (toGoalY / tgLen) * lookFwd;
-    targetX = clamp(intercX, FIELD_LEFT + PLAYER_RADIUS, FIELD_RIGHT - PLAYER_RADIUS);
-    targetY = clamp(intercY, FIELD_TOP  + PLAYER_RADIUS, FIELD_BOTTOM - PLAYER_RADIUS);
+    // Oyuncu topa sahip: doğrudan oyuncunun üzerine git (hem solda hem sağda çalışır)
+    // Yakınsa: oyuncunun hareket yönünde az ilerisini kapat (tackle açısı)
+    // Uzaktaysa: hızla yaklaş
+    const distToPlayer = dist2(aiPlayer.x, aiPlayer.y, s.player.x, s.player.y);
+    if (distToPlayer < PLAYER_RADIUS * 6) {
+      // Yakın: oyuncunun sağ kaleye giden yolunu kes
+      const toGoalX = FIELD_RIGHT - s.player.x;
+      const toGoalY = CENTER_Y    - s.player.y;
+      const tgLen   = Math.sqrt(toGoalX ** 2 + toGoalY ** 2) || 1;
+      const intercX = s.player.x + (toGoalX / tgLen) * PLAYER_RADIUS * 3;
+      const intercY = s.player.y + (toGoalY / tgLen) * PLAYER_RADIUS * 3;
+      targetX = clamp(intercX, FIELD_LEFT + PLAYER_RADIUS, FIELD_RIGHT - PLAYER_RADIUS);
+      targetY = clamp(intercY, FIELD_TOP  + PLAYER_RADIUS, FIELD_BOTTOM - PLAYER_RADIUS);
+    } else {
+      // Uzak: direkt oyuncunun üzerine sprint yap
+      targetX = clamp(s.player.x, FIELD_LEFT + PLAYER_RADIUS, FIELD_RIGHT - PLAYER_RADIUS);
+      targetY = clamp(s.player.y, FIELD_TOP  + PLAYER_RADIUS, FIELD_BOTTOM - PLAYER_RADIUS);
+    }
   }
 
   const dx = targetX - aiPlayer.x, dy = targetY - aiPlayer.y;

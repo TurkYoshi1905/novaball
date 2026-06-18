@@ -47,6 +47,10 @@ const CHANGELOG: ChangelogEntry[] = [
         type: "improvement",
         text: "Kale yüksekliği artırıldı: GOAL_HEIGHT 150 → 180 piksel (+%20). Hem özel oda, rekabet maçı hem de serbest oyun (AI) modunda kaleler biraz daha geniş — gol atmak artık daha erişilebilir.",
       },
+      {
+        type: "fix",
+        text: "Yapay zeka takip düzeltmesi: oyuncu solda veya sağda topa sahipken AI artık her zaman sprint yaparak üzerine gelir. Eskiden sadece çok yakındayken sprint tetikleniyordu; uzakta olan AI yürüyerek yetişemiyordu.",
+      },
     ],
   },
   {
