@@ -70,6 +70,7 @@ interface GR {
   kickCharge: number;          // 0..1 şut şarj seviyesi
   prevShootHeld: boolean;      // bir önceki frame'de şut basılı mıydı
   lastShooterTeam: "red" | "blue" | null;  // en son şut atan takım (kendi kalesine atma önlemi için)
+  aiWobbleT: number;           // AI dribble salınım zaman sayacı (frame bazlı)
 }
 
 interface Options {
@@ -97,6 +98,7 @@ export function useGamePhysics({ username, displayName, canvasRef, onScoreChange
     playerFacingX: 1, playerFacingY: 0, aiFacingX: -1, aiFacingY: 0,
     aiStamina: STAMINA_MAX, aiSprinting: false, matchEnded: false,
     kickCharge: 0, prevShootHeld: false, lastShooterTeam: null,
+    aiWobbleT: 0,
   });
 
   const resetPos = useCallback(() => {
@@ -108,6 +110,7 @@ export function useGamePhysics({ username, displayName, canvasRef, onScoreChange
     s.aiStamina = STAMINA_MAX; s.aiSprinting = false;
     s.playerFacingX = 1; s.playerFacingY = 0; s.aiFacingX = -1; s.aiFacingY = 0;
     s.kickCharge = 0; s.prevShootHeld = false; s.lastShooterTeam = null;
+    s.aiWobbleT = 0;
   }, [username]);
 
   const resetGame = useCallback(() => {
@@ -334,18 +337,22 @@ function updatePhysics(s: GR, dtF: number, mob: MobileInput | null, kb: Keybindi
 function updateAI(s: GR, dtF: number) {
   const { ball, aiPlayer } = s;
 
-  // ── Stamina: sprint koşulları ─────────────────────────────────────────────
-  const playerClose      = dist2(s.player.x, s.player.y, aiPlayer.x, aiPlayer.y) < PLAYER_RADIUS * 4;
+  // ── Dribble salınım sayacı ────────────────────────────────────────────────
+  s.aiWobbleT += dtF;
+
+  // ── Stamina: histerezis ile titreşme önleme ───────────────────────────────
+  // Sprint başlamak için yüksek eşik (42), devam etmek için düşük eşik (10)
+  // Bu sayede stamina bitince "depar/normal" rapid toggle olmaz
+  const aiSprintStart    = s.aiSprinting ? 10 : 42;
   const ballRushingGoal  = s.hasBall === null && ball.vx > 2.5 && ball.x > CENTER_X - 100;
-  // AI topa sahip ve kaleye yarım sahayı geçmişse — atağa sprint
   const aiAttackingSprint = s.hasBall === "ai" && aiPlayer.x < CENTER_X + 60 && s.aiStamina > 30;
-  // Serbest top: AI uzaktaysa hızla üzerine git
-  const freeNearGoal     = s.hasBall === null && dist2(aiPlayer.x, aiPlayer.y, ball.x, ball.y) > 100;
-  // Oyuncu topa sahipken AI her zaman sprint yapar — uzaklık fark etmez
-  const aiChasePlayer    = s.hasBall === "player";
+  // Serbest top: mesafe 180px'den büyükse sprint (100'den 180'e yükseltildi — daha az agresif)
+  const freeNearGoal     = s.hasBall === null && dist2(aiPlayer.x, aiPlayer.y, ball.x, ball.y) > 180;
+  // Oyuncu topa sahipken sadece stamina > 35 ise sprint yap (bitmişse bekle)
+  const aiChasePlayer    = s.hasBall === "player" && s.aiStamina > 35;
   const wantAISprint     = aiChasePlayer || ballRushingGoal || aiAttackingSprint || freeNearGoal;
 
-  if (wantAISprint && s.aiStamina >= STAMINA_SPRINT_MIN) {
+  if (wantAISprint && s.aiStamina >= aiSprintStart) {
     s.aiSprinting = true; s.aiStamina = Math.max(0, s.aiStamina - STAMINA_DRAIN * .82 * dtF);
   } else {
     s.aiSprinting = false; s.aiStamina = Math.min(STAMINA_MAX, s.aiStamina + STAMINA_RECOVER * dtF);
@@ -358,27 +365,27 @@ function updateAI(s: GR, dtF: number) {
   let targetX: number, targetY: number;
 
   if (s.hasBall === "ai") {
-    // Oyuncunun Y pozisyonuna göre kapalı tarafı seç: açık taraftan kaleye yaklaş
+    // Yavaş sinüs tabanlı lateral salınım — dribble sırasında gerçekçi yön değişimi
+    const wobble = Math.sin(s.aiWobbleT * 0.045) * 34;
     const playerAboveCenter = s.player.y < CENTER_Y;
-    const approachYOff = playerAboveCenter ? 65 : -65;
-    // Kaleye çok yakınsa doğrudan saldır, değilse açı pozisyonu al
+    const approachYOff = playerAboveCenter ? 62 : -62;
     const distGoalNow = dist2(aiPlayer.x, aiPlayer.y, FIELD_LEFT, CENTER_Y);
     if (distGoalNow < 200) {
-      // Yakın mesafe: doğrudan kaleye koş
+      // Yakın: kaleye koş, salınım azalt
       targetX = FIELD_LEFT + PLAYER_RADIUS + 20;
-      targetY = clamp(CENTER_Y + approachYOff * 0.4, GOAL_TOP + 20, GOAL_BOTTOM - 20);
+      targetY = clamp(CENTER_Y + approachYOff * 0.4 + wobble * 0.25, GOAL_TOP + 20, GOAL_BOTTOM - 20);
     } else {
-      // Orta mesafe: açı kur
-      targetX = FIELD_LEFT + 120;
-      targetY = clamp(CENTER_Y + approachYOff, FIELD_TOP + PLAYER_RADIUS + 20, FIELD_BOTTOM - PLAYER_RADIUS - 20);
+      // Orta/uzak: açı kur + tam salınım (ıskalama hareketi)
+      targetX = FIELD_LEFT + 130;
+      targetY = clamp(CENTER_Y + approachYOff + wobble, FIELD_TOP + PLAYER_RADIUS + 20, FIELD_BOTTOM - PLAYER_RADIUS - 20);
     }
   } else if (s.hasBall === null) {
-    // Top serbest: ileriye bak ve öngörülü konumlan
     const ballSpd   = Math.sqrt(ball.vx ** 2 + ball.vy ** 2);
     const lookAhead = clamp(10 + ballSpd * 2.4, 10, 32);
     const predX = clamp(ball.x + ball.vx * lookAhead, FIELD_LEFT + PLAYER_RADIUS + 8, FIELD_RIGHT - PLAYER_RADIUS - 8);
     const predY = clamp(ball.y + ball.vy * lookAhead, FIELD_TOP  + PLAYER_RADIUS + 8, FIELD_BOTTOM - PLAYER_RADIUS - 8);
-    if (ball.x > CENTER_X && ball.vx >= 0) {
+    // CENTER_X + 40 ölü bölge: merkez çizgisi civarında savunma/hücum mod titreşmesi önlenir
+    if (ball.x > CENTER_X + 40 && ball.vx >= 0) {
       // Savunma: kale ile top arasına gir (sağ kale — AI'nin kendi kalesi)
       targetX = clamp((predX + FIELD_RIGHT) * .5 - 25, CENTER_X + 10, FIELD_RIGHT - PLAYER_RADIUS);
       targetY = predY;
@@ -388,9 +395,7 @@ function updateAI(s: GR, dtF: number) {
       targetY = predY;
     }
   } else {
-    // Oyuncu topa sahip: doğrudan oyuncunun üzerine git (hem solda hem sağda çalışır)
-    // Yakınsa: oyuncunun hareket yönünde az ilerisini kapat (tackle açısı)
-    // Uzaktaysa: hızla yaklaş
+    // Oyuncu topa sahip: tackle pozisyonu
     const distToPlayer = dist2(aiPlayer.x, aiPlayer.y, s.player.x, s.player.y);
     if (distToPlayer < PLAYER_RADIUS * 6) {
       // Yakın: oyuncunun sağ kaleye giden yolunu kes
@@ -435,12 +440,15 @@ function updateAI(s: GR, dtF: number) {
     }
   }
 
-  // ── Şut: oyuncunun pozisyonuna göre açık köşeyi hedefle ──────────────────
+  // ── Şut: zaman tabanlı mesafe kararı (bazen yakına götür, bazen uzaktan at) ──
+  // aiWobbleT yavaş döngüsü: sin pozitifken uzaktan at, negatifken yakına götür
+  const aiShootRange = Math.sin(s.aiWobbleT * 0.012) > 0 ? 310 : 190;
+
   if (s.aiKickCd > 0) s.aiKickCd -= dtF;
   if (s.aiKickCd <= 0) {
     if (s.hasBall === "ai") {
       const distGoal = dist2(aiPlayer.x, aiPlayer.y, FIELD_LEFT, CENTER_Y);
-      if (distGoal < 320) {
+      if (distGoal < aiShootRange) {
         const aimTop    = GOAL_TOP   + 16;
         const aimBottom = GOAL_BOTTOM - 16;
         // Oyuncu ortanın üstündeyse alt köşeyi hedefle, aksi hâlde üst köşeyi

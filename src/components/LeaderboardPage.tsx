@@ -51,72 +51,104 @@ function PodiumCard({ p, pos, isMe, onClick }: {
   const label = p.display_name || p.username;
   const initial = label.charAt(0).toUpperCase();
 
-  const podiumColors: Record<number, { glow: string; border: string; bg: string; accent: string }> = {
-    1: { glow: "rgba(251,191,36,0.35)", border: "rgba(251,191,36,0.45)", bg: "rgba(251,191,36,0.08)", accent: "#fbbf24" },
-    2: { glow: "rgba(148,163,184,0.25)", border: "rgba(148,163,184,0.35)", bg: "rgba(148,163,184,0.06)", accent: "#94a3b8" },
-    3: { glow: "rgba(194,119,62,0.25)", border: "rgba(194,119,62,0.35)", bg: "rgba(194,119,62,0.06)", accent: "#c2773e" },
+  const podiumColors: Record<number, { glow: string; border: string; bg: string; accent: string; pedestalBg: string }> = {
+    1: { glow: "rgba(251,191,36,0.40)", border: "rgba(251,191,36,0.50)", bg: "rgba(251,191,36,0.09)", accent: "#fbbf24", pedestalBg: "rgba(251,191,36,0.18)" },
+    2: { glow: "rgba(148,163,184,0.28)", border: "rgba(148,163,184,0.38)", bg: "rgba(148,163,184,0.07)", accent: "#94a3b8", pedestalBg: "rgba(148,163,184,0.12)" },
+    3: { glow: "rgba(194,119,62,0.25)", border: "rgba(194,119,62,0.35)", bg: "rgba(194,119,62,0.06)", accent: "#c2773e", pedestalBg: "rgba(194,119,62,0.10)" },
   };
   const c = podiumColors[pos];
+  // Podium yükseklikleri: 1. en yüksek, 2. orta, 3. kısa
+  const pedestalH = pos === 1 ? 72 : pos === 2 ? 44 : 20;
+  const pedestalLabel = pos === 1 ? "🥇" : pos === 2 ? "🥈" : "🥉";
 
   return (
-    <button onClick={onClick}
-      className="flex-1 min-w-0 flex flex-col items-center gap-3 p-4 rounded-2xl transition-all active:scale-[0.97] text-center group relative overflow-hidden"
-      style={{
-        background: c.bg,
-        border: `1.5px solid ${c.border}`,
-        boxShadow: `0 8px 32px ${c.glow}`,
-        order: pos === 1 ? 2 : pos === 2 ? 1 : 3,
-      }}>
-      {/* Top shine */}
-      <div className="absolute top-0 left-0 right-0 h-px"
-        style={{ background: `linear-gradient(90deg,transparent,${c.accent}88,transparent)` }} />
+    <div className="flex-1 min-w-0 flex flex-col" style={{ minWidth: 0 }}>
+      {/* ── Kart içeriği ── */}
+      <button onClick={onClick}
+        className="w-full flex flex-col items-center gap-3 p-4 rounded-t-2xl transition-all active:scale-[0.97] text-center group relative overflow-hidden"
+        style={{
+          background: c.bg,
+          border: `1.5px solid ${c.border}`,
+          borderBottom: "none",
+          boxShadow: `0 -4px 24px ${c.glow}`,
+          // 1. sıra biraz daha büyük
+          paddingTop: pos === 1 ? "20px" : "14px",
+          paddingBottom: pos === 1 ? "16px" : "12px",
+        }}>
+        {/* Top shine */}
+        <div className="absolute top-0 left-0 right-0 h-px"
+          style={{ background: `linear-gradient(90deg,transparent,${c.accent}99,transparent)` }} />
 
-      {/* Position */}
-      <PosBadge pos={pos} />
-
-      {/* Avatar */}
-      <div className="relative">
-        <div className="w-14 h-14 rounded-full flex items-center justify-center font-black text-xl"
-          style={{
-            background: `linear-gradient(135deg,${rank.tier.color}cc,${rank.tier.color}66)`,
-            border: `2.5px solid ${rank.tier.color}88`,
-            boxShadow: `0 0 24px ${rank.tier.glowColor}`,
-          }}>
-          <span className="text-white">{initial}</span>
-        </div>
-        {isOnline && (
-          <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-[#070d16]"
-            style={{ background: "#4ade80", boxShadow: "0 0 8px #4ade8060" }} />
+        {/* 1. sıra için üstte taç efekti */}
+        {pos === 1 && (
+          <div className="absolute -top-px left-0 right-0 h-1 rounded-t-2xl"
+            style={{ background: `linear-gradient(90deg,transparent,${c.accent},transparent)` }} />
         )}
-        {isMe && (
-          <span className="absolute -top-1 -right-1 text-[9px] font-black px-1 py-0.5 rounded-full leading-none"
-            style={{ background: "#4aaeff", color: "#fff" }}>Sen</span>
+
+        {/* Position */}
+        <PosBadge pos={pos} />
+
+        {/* Avatar */}
+        <div className="relative">
+          <div
+            className="rounded-full flex items-center justify-center font-black"
+            style={{
+              width:  pos === 1 ? 64 : 52,
+              height: pos === 1 ? 64 : 52,
+              fontSize: pos === 1 ? 22 : 18,
+              background: `linear-gradient(135deg,${rank.tier.color}cc,${rank.tier.color}66)`,
+              border: `${pos === 1 ? 3 : 2}px solid ${rank.tier.color}99`,
+              boxShadow: `0 0 ${pos === 1 ? 32 : 20}px ${rank.tier.glowColor}`,
+            }}>
+            <span className="text-white">{initial}</span>
+          </div>
+          {isOnline && (
+            <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-[#070d16]"
+              style={{ background: "#4ade80", boxShadow: "0 0 8px #4ade8060" }} />
+          )}
+          {isMe && (
+            <span className="absolute -top-1 -right-1 text-[9px] font-black px-1 py-0.5 rounded-full leading-none"
+              style={{ background: "#4aaeff", color: "#fff" }}>Sen</span>
+          )}
+        </div>
+
+        {/* Name */}
+        <div className="flex flex-col items-center gap-1.5 min-w-0 w-full">
+          <span className="text-white font-bold text-sm leading-tight truncate w-full">{label}</span>
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+            style={{ background: `${rank.tier.color}18`, border: `1px solid ${rank.tier.color}40` }}>
+            <span className="text-xs leading-none">{rank.tier.icon}</span>
+            <span className="text-[10px] font-bold" style={{ color: rank.tier.color }}>{rank.fullName}</span>
+          </div>
+        </div>
+
+        {/* RP */}
+        <div className="flex flex-col items-center">
+          <span className={`font-black ${pos === 1 ? "text-3xl" : "text-2xl"}`} style={{ color: c.accent }}>{p.rp}</span>
+          <span className="text-white/40 text-[10px] font-semibold">RP</span>
+        </div>
+
+        {/* Win rate */}
+        {p.total_matches > 0 && (
+          <div className="w-full text-[10px] text-white/40 font-semibold">
+            {winRate}% G.O. · {p.total_matches}M
+          </div>
         )}
-      </div>
+      </button>
 
-      {/* Name */}
-      <div className="flex flex-col items-center gap-1.5 min-w-0 w-full">
-        <span className="text-white font-bold text-sm leading-tight truncate w-full">{label}</span>
-        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-          style={{ background: `${rank.tier.color}18`, border: `1px solid ${rank.tier.color}40` }}>
-          <span className="text-xs leading-none">{rank.tier.icon}</span>
-          <span className="text-[10px] font-bold" style={{ color: rank.tier.color }}>{rank.fullName}</span>
-        </div>
+      {/* ── Podium kaidesi ── */}
+      <div
+        className="w-full rounded-b-2xl flex items-center justify-center"
+        style={{
+          height: pedestalH,
+          background: c.pedestalBg,
+          border: `1.5px solid ${c.border}`,
+          borderTop: "none",
+          boxShadow: `0 8px 24px ${c.glow}`,
+        }}>
+        <span className="text-lg select-none">{pedestalLabel}</span>
       </div>
-
-      {/* RP */}
-      <div className="flex flex-col items-center">
-        <span className="font-black text-2xl" style={{ color: c.accent }}>{p.rp}</span>
-        <span className="text-white/40 text-[10px] font-semibold">RP</span>
-      </div>
-
-      {/* Win rate */}
-      {p.total_matches > 0 && (
-        <div className="w-full text-[10px] text-white/40 font-semibold">
-          {winRate}% G.O. · {p.total_matches}M
-        </div>
-      )}
-    </button>
+    </div>
   );
 }
 

@@ -222,14 +222,26 @@ bash github-sync.sh push "NovaBall: güncelleme"
 
 ## Sürüm Geçmişi
 
-### v0.1.2 — Lobi Ayrılma Yayını & room_leave SQL Düzeltmesi (18 Haziran 2026)
+### v0.1.2 — Yapay Zeka Gerçekçiliği, Depar Titreşme Düzeltmesi & Premium Podium (18 Haziran 2026)
 
-> Guest oyuncu özel oda lobisinden ayrılınca host ve diğer oyuncular artık takım listesini anında görür. Çift katmanlı çözüm: anında broadcast + düzeltilmiş SQL RPC.
+> AI depar titreşmesi ve merkez donma sorunu giderildi. Dribble sırasında sinüs tabanlı lateral salınım eklendi. Lider tablosu podium'u gerçek basamak yükseklikleriyle premium şekilde yeniden tasarlandı.
 
-#### 🏠 Lobi Gerçek Zamanlılık
-- `player_left_lobby` broadcast eventi eklendi: ayrılan oyuncu kanalda duyurulur, tüm istemciler anında React state'ten oyuncuyu siler (postgres_changes güvenilirliğine bağımsız)
-- `handleLeave` güncellendi: önce broadcast, sonra sohbet mesajı, sonra `leaveRoom` RPC
-- `room_leave` RPC yeniden yazıldı (`20260618_004_room_leave_fix.sql`): doğru JSONB dizi filtresiyle `red_team`/`blue_team`'den oyuncu kaldırılır; host ayrılırsa oda tamamen silinir
+#### 🤖 Yapay Zeka
+- **Depar titreşmesi düzeltildi**: sprint histerezis — başlama eşiği 42, durdurma 10 (her ikisi için 15 kullanılıyordu)
+- **Merkez çizgisi donması düzeltildi**: CENTER_X ±40px ölü bölgesi — savunma/hücum mod titreşmesi önlendi
+- **Serbest top sprint eşiği** 100px → 180px: AI topa yakınken gereksiz sprint yapmıyor
+- **Oyuncu kovalama**: stamina > 35 olmadan sprint yapmaz, daha dengeli stamina yönetimi
+- **Gerçekçi dribble**: sinüs tabanlı lateral salınım (±34px, ~140 frame periyot) — AI artık düz değil, sola-sağa savurarak ilerliyor
+- **Dinamik şut mesafesi**: ~8s döngüyle 190px veya 310px — tahmin edilmesi zor, çeşitli pozisyonlardan atış
+
+#### 🏆 Arayüz
+- **Podium yeniden tasarlandı**: gerçek basamak kaidesı — 1. sıra 72px, 2. sıra 44px, 3. sıra 20px
+- 1. sıra kartı daha büyük avatar (64px), daha büyük RP (text-3xl), üst kenarda altın çizgi
+- Her kaidenin içinde 🥇🥈🥉 emoji, renk kodlu kenar ve glow efektleri
+
+#### 🏠 Lobi Gerçek Zamanlılık (önceki patch)
+- `player_left_lobby` broadcast: ayrılan oyuncu anında takım listesinden siliniyor (postgres_changes bağımsız)
+- `room_leave` RPC JSONB düzeltmesi (`20260618_004_room_leave_fix.sql`)
 
 ---
 

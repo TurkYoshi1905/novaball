@@ -16,6 +16,40 @@ export interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.1.2",
+    date: "18 Haziran 2026",
+    label: "patch",
+    title: "Yapay Zeka Gerçekçiliği, Depar Titreşme Düzeltmesi & Premium Podium",
+    description:
+      "v0.1.2; yapay zekanın depar göstergesi titreşmesi ve merkez bölgede donma sorunu giderildi, dribble sırasında lateral salınım ile daha gerçekçi AI hareketi eklendi ve lider tablosu podium'u gerçek basamak yükseklikleriyle yeniden tasarlandı.",
+    changes: [
+      {
+        type: "fix",
+        text: "AI depar titreşmesi giderildi: sprint başlatma eşiği 42, durdurma eşiği 10 olarak ayrıldı (histerezis). Stamina bitmişken depar göstergesi artık hızla yanıp sönmüyor.",
+      },
+      {
+        type: "fix",
+        text: "Merkez çizgisi donması düzeltildi: CENTER_X ±40px ölü bölgesi eklendi. Top merkez yakınındayken AI savunma/hücum modu arasında titremez, hedefe doğru sürekli hareket eder.",
+      },
+      {
+        type: "fix",
+        text: "AI serbest top sprint eşiği 100px'ten 180px'e yükseltildi. AI artık topun çok yakınındayken gereksiz sprint yapmaz, daha dengeli stamina yönetir.",
+      },
+      {
+        type: "improvement",
+        text: "AI gerçekçi dribble hareketi: sinüs tabanlı lateral salınım (±34px, ~140 frame periyot) eklendi. AI topa sahipken artık düz değil, hafifçe sola-sağa savurarak ilerliyor — bloke etmesi ve tahmin etmesi daha zor.",
+      },
+      {
+        type: "improvement",
+        text: "Dinamik şut mesafesi: AI 8 saniyelik döngüyle bazen yakından (190px), bazen uzaktan (310px) şut atma kararı alıyor. Her pozisyon aynı mesafeden atış yapılmıyor.",
+      },
+      {
+        type: "design",
+        text: "Lider tablosu podium yeniden tasarlandı: gerçek basamak yükseklikleri (1. sıra 72px, 2. sıra 44px, 3. sıra 20px kaide), 1. sıra büyütülmüş avatar ve RP, altın/gümüş/bronz kaide emoji ile gerçek podyum hissi.",
+      },
+    ],
+  },
+  {
     version: "0.1.1",
     date: "18 Haziran 2026",
     label: "patch",
