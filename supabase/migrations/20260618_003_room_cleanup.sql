@@ -56,6 +56,9 @@ $$;
 -- Supabase'de pg_cron ile periyodik çalıştırılabilir:
 --   SELECT cron.schedule('cleanup-stale-rooms', '*/10 * * * *',
 --     $$SELECT cleanup_stale_rooms()$$);
+--
+-- Return type değiştiği için önce düşürüyoruz (CREATE OR REPLACE bunu yapamaz)
+DROP FUNCTION IF EXISTS cleanup_stale_rooms();
 CREATE OR REPLACE FUNCTION cleanup_stale_rooms()
 RETURNS integer
 LANGUAGE plpgsql
