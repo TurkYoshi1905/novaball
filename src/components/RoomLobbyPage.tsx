@@ -93,6 +93,15 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
       setMessages(prev => [...prev, msg]);
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     });
+    // Oyuncu odadan ayrıldı — anında takım listesini güncelle (postgres_changes güvenilirliğine bağımsız)
+    ch.on("broadcast", { event: "player_left_lobby" }, ({ payload }) => {
+      const { username: leftUser } = payload as { username: string; displayName: string };
+      setRoom(prev => ({
+        ...prev,
+        redTeam:  prev.redTeam.filter(m => m.username !== leftUser),
+        blueTeam: prev.blueTeam.filter(m => m.username !== leftUser),
+      }));
+    });
     ch.subscribe(status => {
       if (status === "SUBSCRIBED") { broadcastChat(ch, joinMsg); setMessages([joinMsg]); }
     });
@@ -133,11 +142,19 @@ export default function RoomLobbyPage({ room: initialRoom, username, displayName
 
   const handleLeave = async () => {
     if (channelRef.current) {
+      // 1) Broadcast: tüm istemciler anında takım listesini günceller (postgres_changes'tan bağımsız)
+      channelRef.current.send({
+        type: "broadcast",
+        event: "player_left_lobby",
+        payload: { username, displayName },
+      });
+      // 2) Sohbete sistem mesajı
       broadcastChat(channelRef.current, {
         id: crypto.randomUUID(), username: "system", displayName: "Sistem",
         text: `${displayName} odadan ayrıldı.`, type: "system", ts: Date.now(),
       });
     }
+    // 3) Supabase RPC: kalıcı veri güncelleme (postgres_changes → subscribeToRoom)
     await leaveRoom(room.id, username);
     onLeave();
   };
