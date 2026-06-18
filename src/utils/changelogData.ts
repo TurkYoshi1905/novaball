@@ -16,6 +16,40 @@ export interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.1.0",
+    date: "18 Haziran 2026",
+    label: "minor",
+    title: "Misafir Kasma Düzeltmesi, Gelişmiş Yapay Zeka & Daha Geniş Kaleler",
+    description:
+      "NovaBall v0.1.0; çok oyunculu maçlarda misafir oyuncuların yaşadığı kasma/donma sorununu kökten çözen 60fps lerp sistemi, yeniden yazılan yapay zeka davranışı (savunma ve hücum artık doğru yönde) ve tüm modlarda hafifçe genişletilmiş kale boyutunu içeriyor.",
+    changes: [
+      {
+        type: "fix",
+        text: "Misafir kasma sorunu çözüldü: uzak oyuncular için per-frame lerp interpolasyon sistemi eklendi. Host durumu 30fps gelirken uzak oyuncular artık 60fps akıcılıkla hareket eder — 'snapma' ve titreme tamamen ortadan kalktı.",
+      },
+      {
+        type: "performance",
+        text: "Guest tarafı ağ mimarisi iyileştirildi: physicsStep lokal oyuncuya odaklanırken, uzak oyuncular için RAF döngüsünde her kare 0.20 lerp faktörüyle hedeflere yumuşak yaklaşım uygulanır.",
+      },
+      {
+        type: "fix",
+        text: "Yapay zeka savunma yönü düzeltildi: AI artık doğru kaleyi (sağ kale) koruyor. Eskiden sol kaleye savunma yaparken şimdi sağ kalesine gelen topa göğüs geriyor.",
+      },
+      {
+        type: "fix",
+        text: "Yapay zeka hücum kesme mantığı düzeltildi: oyuncu topa sahipken AI artık sağ kalenin önündeki geçiş hattını kesiyor (eskiden yanlış yöne — sol kaleye — gidiyordu).",
+      },
+      {
+        type: "fix",
+        text: "Yapay zeka sprint koşulları güncellendi: top sağ yarıya doğru hızlıyken AI kaleye koşuyor; ayrıca toptan uzak olduğunda yönden bağımsız olarak sprint yapıyor.",
+      },
+      {
+        type: "improvement",
+        text: "Kale yüksekliği artırıldı: GOAL_HEIGHT 150 → 180 piksel (+%20). Hem özel oda, rekabet maçı hem de serbest oyun (AI) modunda kaleler biraz daha geniş — gol atmak artık daha erişilebilir.",
+      },
+    ],
+  },
+  {
     version: "0.0.9",
     date: "16 Haziran 2026",
     label: "minor",

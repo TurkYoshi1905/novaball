@@ -336,11 +336,11 @@ function updateAI(s: GR, dtF: number) {
 
   // ── Stamina: sprint koşulları ─────────────────────────────────────────────
   const playerClose      = dist2(s.player.x, s.player.y, aiPlayer.x, aiPlayer.y) < PLAYER_RADIUS * 4;
-  const ballRushingGoal  = s.hasBall === null && ball.vx < -2.5 && ball.x < CENTER_X + 100;
+  const ballRushingGoal  = s.hasBall === null && ball.vx > 2.5 && ball.x > CENTER_X - 100;
   // AI topa sahip ve kaleye yarım sahayı geçmişse — atağa sprint
   const aiAttackingSprint = s.hasBall === "ai" && aiPlayer.x < CENTER_X + 60 && s.aiStamina > 30;
-  // Serbest top AI kalesine yakınsa — hızla üzerine git
-  const freeNearGoal     = s.hasBall === null && ball.x < CENTER_X + 50 && dist2(aiPlayer.x, aiPlayer.y, ball.x, ball.y) > 80;
+  // Serbest top: AI uzaktaysa hızla üzerine git
+  const freeNearGoal     = s.hasBall === null && dist2(aiPlayer.x, aiPlayer.y, ball.x, ball.y) > 100;
   const wantAISprint     = (s.hasBall === "player" && playerClose) || ballRushingGoal || aiAttackingSprint || freeNearGoal;
 
   if (wantAISprint && s.aiStamina >= STAMINA_SPRINT_MIN) {
@@ -376,9 +376,9 @@ function updateAI(s: GR, dtF: number) {
     const lookAhead = clamp(10 + ballSpd * 2.4, 10, 32);
     const predX = clamp(ball.x + ball.vx * lookAhead, FIELD_LEFT + PLAYER_RADIUS + 8, FIELD_RIGHT - PLAYER_RADIUS - 8);
     const predY = clamp(ball.y + ball.vy * lookAhead, FIELD_TOP  + PLAYER_RADIUS + 8, FIELD_BOTTOM - PLAYER_RADIUS - 8);
-    if (ball.x < CENTER_X && ball.vx <= 0) {
-      // Savunma: kale ile top arasına gir
-      targetX = clamp((predX + FIELD_LEFT) * .5 + 25, FIELD_LEFT + PLAYER_RADIUS, CENTER_X - 10);
+    if (ball.x > CENTER_X && ball.vx >= 0) {
+      // Savunma: kale ile top arasına gir (sağ kale — AI'nin kendi kalesi)
+      targetX = clamp((predX + FIELD_RIGHT) * .5 - 25, CENTER_X + 10, FIELD_RIGHT - PLAYER_RADIUS);
       targetY = predY;
     } else {
       // Hücum/orta: topun öngörülen konumuna git
@@ -386,8 +386,8 @@ function updateAI(s: GR, dtF: number) {
       targetY = predY;
     }
   } else {
-    // Oyuncu topla: kale önündeki geçiş hattını kes — hızlı reaksiyon
-    const toGoalX = FIELD_LEFT  - s.player.x;
+    // Oyuncu topla: sağ kale önündeki geçiş hattını kes — hızlı reaksiyon
+    const toGoalX = FIELD_RIGHT - s.player.x;
     const toGoalY = CENTER_Y    - s.player.y;
     const tgLen   = Math.sqrt(toGoalX ** 2 + toGoalY ** 2) || 1;
     const lookFwd = PLAYER_RADIUS * 4.5;

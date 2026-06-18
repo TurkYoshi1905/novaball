@@ -6,7 +6,7 @@ export const FIELD_RIGHT = 1135;
 export const FIELD_TOP = 45;
 export const FIELD_BOTTOM = 630;
 
-export const GOAL_HEIGHT = 150;
+export const GOAL_HEIGHT = 180;
 export const GOAL_DEPTH = 50;
 export const GOAL_TOP = (CANVAS_HEIGHT - GOAL_HEIGHT) / 2;
 export const GOAL_BOTTOM = GOAL_TOP + GOAL_HEIGHT;

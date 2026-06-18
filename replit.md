@@ -219,6 +219,24 @@ bash github-sync.sh push "NovaBall: güncelleme"
 
 ## Sürüm Geçmişi
 
+### v0.1.0 — Misafir Kasma Düzeltmesi, Gelişmiş Yapay Zeka & Daha Geniş Kaleler (18 Haziran 2026)
+
+> Çok oyunculu misafir kasması kökten çözüldü (60fps lerp). AI savunma ve hücum yönleri düzeltildi. Tüm modlarda kaleler dikey olarak büyütüldü.
+
+#### 🌐 Ağ / Performans
+- Misafir kasma sorunu giderildi: uzak oyuncular için per-frame `0.20` lerp interpolasyon sistemi — host 30fps güncelleme gönderse bile görsel hareket 60fps akıcılığında
+- Guest RAF döngüsüne uzak oyuncu lerp bloğu eklendi; 30fps snaplama kayboldu
+
+#### 🤖 Yapay Zeka
+- **Savunma yönü düzeltildi**: AI artık sağ kaleyi koruyor (eskiden sol kaleye savunma yapıyordu)
+- **Hücum kesme düzeltildi**: oyuncu topa sahipken AI sağ kalenin önünü kesiyor (eskiden yanlış yöne gidiyordu)
+- **Sprint koşulları güncellendi**: top sağa doğru hızlıyken + toptan uzak olunca sprint
+
+#### ⚽ Kale
+- `GOAL_HEIGHT`: 150 → 180 piksel (tüm modlarda geçerli)
+
+---
+
 ### v0.0.9 — Rekabetçi RP Kaybı, Rank Düşüşü & Arayüz Güncellemeleri (16 Haziran 2026)
 
 > Yenilgi artık 10–20 rastgele RP kaybına, olası rank düşüşüne yol açıyor. Rank Sistemi sayfası premium yeniden tasarım, RP Nedir açıklaması. Lider Tablosu podium + arama + sekmeler. Landing Page rank düşüş bilgisi.

@@ -86,6 +86,7 @@ interface GR {
   lastInput:    Input;               // delta: son gönderilen girdi
   lastSync:     number;
   lastInputBc:  number;
+  remoteTargets: Record<string, { x: number; y: number; vx: number; vy: number }>; // uzak oyuncu lerp hedefleri
 }
 
 interface Options {
@@ -201,6 +202,7 @@ export function useMultiplayerPhysics({
       facingX, facingY, kickCharge, kickCd, prevShoot, inputs,
       lastSync: 0, lastInputBc: 0,
       lastInput: { dx: 0, dy: 0, shoot: false, sprint: false },
+      remoteTargets: {},
     };
   }, [match, ranked]);
 
@@ -672,10 +674,8 @@ export function useMultiplayerPhysics({
             // Hızı her zaman host'tan al (fizik tutarlılığı)
             lp.vx = sp.vx; lp.vy = sp.vy;
           } else {
-            // Uzak oyuncular: %30 lerp → pürüzsüz interpolasyon
-            lp.x  += (sp.x  - lp.x)  * 0.30;
-            lp.y  += (sp.y  - lp.y)  * 0.30;
-            lp.vx  = sp.vx; lp.vy = sp.vy;
+            // Uzak oyuncular: hedefi kaydet, RAF loop'ta her frame'de yumuşak lerp uygulanır (60fps akıcı)
+            g.remoteTargets[sp.username] = { x: sp.x, y: sp.y, vx: sp.vx, vy: sp.vy };
           }
         }
       });
@@ -748,6 +748,16 @@ export function useMultiplayerPhysics({
         // Host durumu geldiğinde lerp ile yumuşak reconciliation uygulanır.
         // localUsername geçirilir: yalnızca kendi kick charge hesaplanır (çift-şarj önlemi)
         physicsStep(g, dt, localUsername);
+        // Uzak oyuncular için her frame'de sürekli lerp: host'tan gelen hedeflere doğru 60fps akıcı hareket.
+        // Bu yaklaşım 30fps host güncellemelerinin oluşturduğu kasma/titreme sorununu ortadan kaldırır.
+        for (const p of g.players) {
+          if (p.username === localUsername) continue;
+          const t = g.remoteTargets[p.username];
+          if (!t) continue;
+          p.x  += (t.x  - p.x)  * 0.20;
+          p.y  += (t.y  - p.y)  * 0.20;
+          p.vx  = t.vx; p.vy = t.vy;
+        }
         const now = Date.now();
         const curDx = clamp(g.inputs[localUsername]?.dx ?? 0, -1, 1);
         const curDy = clamp(g.inputs[localUsername]?.dy ?? 0, -1, 1);
