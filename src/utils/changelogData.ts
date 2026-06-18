@@ -16,6 +16,36 @@ export interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.1.1",
+    date: "18 Haziran 2026",
+    label: "patch",
+    title: "Sohbet Yazıyor Göstergesi, Özel Oda Ayrılma Bildirimleri & Gelişmiş Titreme Düzeltmesi",
+    description:
+      "v0.1.1; sohbet paneli açıkken oyuncunun topunun üzerinde animasyonlu yazıyor balonu, özel oda maçlarından ayrılma bildirimlerinin sohbete yansıması, host ayrılınca diğer oyuncuların otomatik lobiye dönmesi ve hız bazlı extrapolasyon ile daha pürüzsüz çok oyunculu deneyim sunuyor.",
+    changes: [
+      {
+        type: "feature",
+        text: "Yazıyor göstergesi: oyuncu sohbet panelinde metin yazarken topunun üzerinde 3 noktalı animasyonlu konuşma balonu görünür. Klavyeden el çekilince (blur) veya 3 saniye hareketsizlik sonrası balon kaybolur.",
+      },
+      {
+        type: "feature",
+        text: "Özel oda ayrılma bildirimleri: bir oyuncu maçtan ayrıldığında sohbete 'X maçtan ayrıldı.' sistem mesajı yazılır. Mesaj tüm oyunculara iletilir.",
+      },
+      {
+        type: "fix",
+        text: "Host odayı kapatınca/maçtan ayrılınca diğer oyuncular otomatik lobiye atılıyor. Daha önce misafirler haberdar edilmiyordu.",
+      },
+      {
+        type: "fix",
+        text: "Titreme iyileştirmesi: hız bazlı extrapolasyon eklendi. Uzak oyuncunun pozisyonu artık salt lerp ile değil, son state'teki hızından hesaplanan öngörülü konuma doğru interpolasyon yapılıyor — titreme ve gecikme izlenimi daha da azaldı.",
+      },
+      {
+        type: "improvement",
+        text: "Lerp faktörü 0.20 → 0.28 olarak güncellendi. Ekstra verim için mesafe + hız kombinasyonuyla daha hızlı yakınsama sağlanıyor.",
+      },
+    ],
+  },
+  {
     version: "0.1.0",
     date: "18 Haziran 2026",
     label: "minor",

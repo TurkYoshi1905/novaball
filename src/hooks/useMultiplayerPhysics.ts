@@ -86,7 +86,9 @@ interface GR {
   lastInput:    Input;               // delta: son gönderilen girdi
   lastSync:     number;
   lastInputBc:  number;
-  remoteTargets: Record<string, { x: number; y: number; vx: number; vy: number }>; // uzak oyuncu lerp hedefleri
+  remoteTargets: Record<string, { x: number; y: number; vx: number; vy: number; receivedAt: number }>; // uzak oyuncu lerp hedefleri
+  typingSet:     Set<string>;  // şu an yazı yazan oyuncuların username seti
+  drawTs:        number;       // RAF timestamp (animasyon için)
 }
 
 interface Options {
@@ -100,6 +102,8 @@ interface Options {
   onGameEnd?:         (score: Score, goalCounts: Record<string, number>, forfeit?: boolean, leaverTeam?: Team) => void;
   onOpponentForfeit?: (leaverTeam: Team, score: Score) => void;
   onChatReceived?:    (msg: ChatMessage) => void;
+  isCustomRoom?:      boolean;
+  onRoomClosed?:      () => void;
 }
 
 // ─── Top iliştirme: oyuncunun önüne yapıştır ─────────────────────────────────
@@ -146,7 +150,7 @@ function tryKick(
 }
 
 export function useMultiplayerPhysics({
-  canvasRef, match, localUsername, localDisplayName, isHost, ranked, mobileInputRef, onGameEnd, onOpponentForfeit, onChatReceived,
+  canvasRef, match, localUsername, localDisplayName, isHost, ranked, mobileInputRef, onGameEnd, onOpponentForfeit, onChatReceived, isCustomRoom, onRoomClosed,
 }: Options) {
   const [hudScore,        setHudScore]        = useState<Score>({ red: 0, blue: 0 });
   const [hudTime,         setHudTime]         = useState(ranked ? RANKED_DURATION_MS : 0);
@@ -203,6 +207,8 @@ export function useMultiplayerPhysics({
       lastSync: 0, lastInputBc: 0,
       lastInput: { dx: 0, dy: 0, shoot: false, sprint: false },
       remoteTargets: {},
+      typingSet:     new Set<string>(),
+      drawTs:        0,
     };
   }, [match, ranked]);
 
@@ -419,7 +425,7 @@ export function useMultiplayerPhysics({
   }, [ranked, resetPositions]);
 
   // ─── Canvas çizimi ────────────────────────────────────────────────────────
-  const draw = useCallback((gr: GR, canvas: HTMLCanvasElement) => {
+  const draw = useCallback((gr: GR, canvas: HTMLCanvasElement, ts: number) => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -611,6 +617,35 @@ export function useMultiplayerPhysics({
         }
       }
     }
+
+    // ── Yazıyor göstergesi (typing bubble) ─────────────────────────────────
+    // 3 noktalı animasyon: 900ms döngüde sırayla parlayan noktalar
+    const dotPhase = Math.floor((ts % 900) / 300); // 0, 1, 2
+    for (const p of gr.players) {
+      if (!gr.typingSet.has(p.username)) continue;
+      if (!isFinite(p.x) || !isFinite(p.y)) continue;
+      const bx = p.x, by = p.y - PLAYER_RADIUS - 24;
+      const bw = 34, bh = 18, br = 6;
+      // Balon arka planı
+      ctx.save();
+      ctx.fillStyle = "rgba(15,25,45,0.90)";
+      ctx.strokeStyle = "rgba(100,170,255,0.35)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx - bw/2, by - bh/2, bw, bh, br);
+      else ctx.rect(bx - bw/2, by - bh/2, bw, bh);
+      ctx.fill(); ctx.stroke();
+      // Küçük ok (balonun alt kısmı)
+      ctx.fillStyle = "rgba(15,25,45,0.90)";
+      ctx.beginPath(); ctx.moveTo(bx - 4, by + bh/2); ctx.lineTo(bx, by + bh/2 + 5); ctx.lineTo(bx + 4, by + bh/2); ctx.fill();
+      // 3 nokta
+      for (let d = 0; d < 3; d++) {
+        const active = d === dotPhase;
+        ctx.beginPath(); ctx.arc(bx - 8 + d * 8, by, active ? 3 : 2, 0, Math.PI * 2);
+        ctx.fillStyle = active ? "rgba(100,200,255,0.95)" : "rgba(255,255,255,0.25)"; ctx.fill();
+      }
+      ctx.restore();
+    }
   }, [localUsername, isHost]);
 
   // ─── Ana döngü ────────────────────────────────────────────────────────────
@@ -675,7 +710,7 @@ export function useMultiplayerPhysics({
             lp.vx = sp.vx; lp.vy = sp.vy;
           } else {
             // Uzak oyuncular: hedefi kaydet, RAF loop'ta her frame'de yumuşak lerp uygulanır (60fps akıcı)
-            g.remoteTargets[sp.username] = { x: sp.x, y: sp.y, vx: sp.vx, vy: sp.vy };
+            g.remoteTargets[sp.username] = { x: sp.x, y: sp.y, vx: sp.vx, vy: sp.vy, receivedAt: Date.now() };
           }
         }
       });
@@ -694,6 +729,29 @@ export function useMultiplayerPhysics({
     // Sohbet mesajlarını dinle
     conn.on<ChatMessage>("chat", msg => {
       onChatReceived?.(msg);
+    });
+
+    // Yazıyor göstergesi — chat inputuna yazarken balon göster
+    conn.on<{ username: string; isTyping: boolean }>("typing", payload => {
+      const g = grRef.current; if (!g) return;
+      if (payload.isTyping) g.typingSet.add(payload.username);
+      else g.typingSet.delete(payload.username);
+    });
+
+    // Oyuncu maçtan ayrıldı (özel oda) — sohbete sistem mesajı yaz
+    conn.on<{ username: string; displayName: string }>("player_left", payload => {
+      const g = grRef.current; if (!g) return;
+      g.typingSet.delete(payload.username);
+      const sysMsg: ChatMessage = {
+        id: crypto.randomUUID(), username: "", displayName: "",
+        text: `${payload.displayName} maçtan ayrıldı.`, type: "system", ts: Date.now(),
+      };
+      onChatReceived?.(sysMsg);
+    });
+
+    // Oda kapatıldı — host ayrılınca tüm oyuncular bildirilir
+    conn.on<Record<string, never>>("room_closed", () => {
+      onRoomClosed?.();
     });
 
     // Tab arka plana alınıp geri gelince dt dev boyuta çıkıyor → lastTs sıfırla
@@ -754,8 +812,12 @@ export function useMultiplayerPhysics({
           if (p.username === localUsername) continue;
           const t = g.remoteTargets[p.username];
           if (!t) continue;
-          p.x  += (t.x  - p.x)  * 0.20;
-          p.y  += (t.y  - p.y)  * 0.20;
+          // Hız bazlı extrapolasyon: son state'ten bu yana kaç frame geçti
+          const elapsed = Math.min((Date.now() - t.receivedAt) / FRAME_MS, 8);
+          const predX = t.x + t.vx * elapsed;
+          const predY = t.y + t.vy * elapsed;
+          p.x  += (predX - p.x) * 0.28;
+          p.y  += (predY - p.y) * 0.28;
           p.vx  = t.vx; p.vy = t.vy;
         }
         const now = Date.now();
@@ -791,7 +853,8 @@ export function useMultiplayerPhysics({
         onGameEnd?.(g.score, g.goalCounts);
       }
 
-      draw(g, canvas);
+      g.drawTs = ts;
+      draw(g, canvas, ts);
       rafRef.current = requestAnimationFrame(loop);
     };
 
@@ -821,6 +884,24 @@ export function useMultiplayerPhysics({
     wsConnRef.current?.send("chat", msg);
   }, []);
 
+  // Yazıyor göstergesi gönder (kendi typingSet'ini de günceller — self:false nedeniyle)
+  const sendTyping = useCallback((typing: boolean) => {
+    wsConnRef.current?.send("typing", { username: localUsername, isTyping: typing });
+    const g = grRef.current; if (!g) return;
+    if (typing) g.typingSet.add(localUsername);
+    else g.typingSet.delete(localUsername);
+  }, [localUsername]);
+
+  // Özel oda: guest maçtan ayrıldığında diğerlerine bildir
+  const sendPlayerLeft = useCallback((displayName: string) => {
+    wsConnRef.current?.send("player_left", { username: localUsername, displayName });
+  }, [localUsername]);
+
+  // Özel oda: host maçtan ayrıldığında tüm oyunculara bildir
+  const sendRoomClosed = useCallback(() => {
+    wsConnRef.current?.send("room_closed", {});
+  }, []);
+
   return {
     score:        hudScore,
     gameTimeMs:   hudTime,
@@ -829,5 +910,8 @@ export function useMultiplayerPhysics({
     scoreRef,
     sendForfeit,
     sendChat,
+    sendTyping,
+    sendPlayerLeft,
+    sendRoomClosed,
   };
 }

@@ -88,6 +88,7 @@ export default function MultiplayerBoard({
   const [goalFlash,  setGoalFlash]  = useState<Team | null>(null);
   const chatEndRef      = useRef<HTMLDivElement>(null);
   const endHandledRef   = useRef(false);
+  const typingTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const myTeam: Team   = match.redTeam.some(m => m.username === localUsername) ? "red" : "blue";
   const oppTeam: Team  = myTeam === "red" ? "blue" : "red";
@@ -156,10 +157,11 @@ export default function MultiplayerBoard({
     finishGame(currentScore, {}, true, leaverTeam);
   }, [finishGame]);
 
-  const { score, gameTimeMs, phase, lastGoalTeam, scoreRef, sendForfeit, sendChat } = useMultiplayerPhysics({
+  const { score, gameTimeMs, phase, lastGoalTeam, scoreRef, sendForfeit, sendChat, sendTyping, sendPlayerLeft, sendRoomClosed } = useMultiplayerPhysics({
     canvasRef, match, localUsername, localDisplayName, isHost, ranked,
     mobileInputRef, onGameEnd: finishGame, onOpponentForfeit: handleOpponentForfeit,
-    onChatReceived: handleChatReceived,
+    onChatReceived: handleChatReceived, isCustomRoom,
+    onRoomClosed: onLeave,
   });
 
   // Gol flash — phase "goal_pause" olunca tetikle, "playing"'e dönnce temizle
@@ -179,6 +181,8 @@ export default function MultiplayerBoard({
       text: inputText.trim(), type: "user", ts: Date.now(),
     };
     sendChat(msg);
+    sendTyping(false);
+    if (typingTimerRef.current) { clearTimeout(typingTimerRef.current); typingTimerRef.current = null; }
     setMessages(prev => [...prev, msg]);
     setInputText("");
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -192,6 +196,11 @@ export default function MultiplayerBoard({
   const handleLeave = useCallback(() => {
     // Özel oda maçları: forfeit gönderme — oda açık kalır, diğer oyuncular devam eder
     if (isCustomRoom) {
+      if (isHost) {
+        sendRoomClosed();
+      } else {
+        sendPlayerLeft(localDisplayName);
+      }
       onLeave();
       return;
     }
@@ -211,7 +220,7 @@ export default function MultiplayerBoard({
     sendForfeit(myTeam);
     // Kendi sonuç ekranımızı göster (kaybeden olarak)
     finishGame(scoreRef.current, {}, true, myTeam);
-  }, [sendForfeit, myTeam, finishGame, scoreRef, onLeave, isCustomRoom, ranked, match.mode]);
+  }, [sendForfeit, sendRoomClosed, sendPlayerLeft, localDisplayName, isHost, myTeam, finishGame, scoreRef, onLeave, isCustomRoom, ranked, match.mode]);
 
   const timeDisplay = ranked ? fmtCountdown(gameTimeMs) : fmtCountup(gameTimeMs);
   const urgent      = ranked && gameTimeMs < 15_000;
@@ -386,7 +395,21 @@ export default function MultiplayerBoard({
             <div className="flex gap-2 p-3 border-t border-white/8">
               <input
                 type="text" value={inputText}
-                onChange={e => setInputText(e.target.value)}
+                onChange={e => {
+                  setInputText(e.target.value);
+                  if (e.target.value.length > 0) {
+                    sendTyping(true);
+                    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+                    typingTimerRef.current = setTimeout(() => sendTyping(false), 3000);
+                  } else {
+                    sendTyping(false);
+                    if (typingTimerRef.current) { clearTimeout(typingTimerRef.current); typingTimerRef.current = null; }
+                  }
+                }}
+                onBlur={() => {
+                  sendTyping(false);
+                  if (typingTimerRef.current) { clearTimeout(typingTimerRef.current); typingTimerRef.current = null; }
+                }}
                 onKeyDown={e => e.key === "Enter" && sendMessage()}
                 placeholder="Mesaj yaz…" maxLength={100}
                 className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs placeholder-white/25 outline-none focus:border-[#4af]/40 transition-all"
