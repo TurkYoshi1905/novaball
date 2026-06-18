@@ -205,6 +205,9 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - **Görünürlük düzeltmesi**: `onGameState` artık TÜM oyuncuların konumunu günceller (lokal oyuncu dahil) — host her zaman yetkilidir
 - **Özel oda maçı çıkışı**: Oyuncu maçtan çıkınca `room_leave` RPC → oda Supabase'den silinir; rakip otomatik lobiye döner
 - **createRoom maxPlayers**: 1v1=2, 2v2=4, 3v3=6, 4v4=8, 5v5=10 — her takım maks `maxPlayers/2` oyuncu
+- **Lobi ayrılma yayını**: Guest ayrılınca `player_left_lobby` broadcast → diğer oyuncular takım listesini anında günceller (postgres_changes bağımsız)
+- **Yazıyor göstergesi**: Canvas üzerinde konuşan oyuncunun başında animasyonlu speech bubble gösterilir
+- **Hız tabanlı extrapolasyon**: Paket gelince `receivedAt` ile 0.28 lerp faktörü — uzak oyuncu hareketi pürüzsüz
 
 ## GitHub Yayınlama
 
@@ -218,6 +221,34 @@ bash github-sync.sh push "NovaBall: güncelleme"
 ```
 
 ## Sürüm Geçmişi
+
+### v0.1.2 — Lobi Ayrılma Yayını & room_leave SQL Düzeltmesi (18 Haziran 2026)
+
+> Guest oyuncu özel oda lobisinden ayrılınca host ve diğer oyuncular artık takım listesini anında görür. Çift katmanlı çözüm: anında broadcast + düzeltilmiş SQL RPC.
+
+#### 🏠 Lobi Gerçek Zamanlılık
+- `player_left_lobby` broadcast eventi eklendi: ayrılan oyuncu kanalda duyurulur, tüm istemciler anında React state'ten oyuncuyu siler (postgres_changes güvenilirliğine bağımsız)
+- `handleLeave` güncellendi: önce broadcast, sonra sohbet mesajı, sonra `leaveRoom` RPC
+- `room_leave` RPC yeniden yazıldı (`20260618_004_room_leave_fix.sql`): doğru JSONB dizi filtresiyle `red_team`/`blue_team`'den oyuncu kaldırılır; host ayrılırsa oda tamamen silinir
+
+---
+
+### v0.1.1 — Yazıyor Göstergesi, Sistem Mesajları & Extrapolasyon Lerp (18 Haziran 2026)
+
+> Canvas üzerinde yazıyor balonu, oyuncu giriş/çıkış sistem mesajları ve hız tabanlı extrapolasyon lerp ile uzak oyuncu hareketi daha pürüzsüz.
+
+#### 💬 Yazıyor Göstergesi
+- Canvas üzerinde konuşan oyuncunun başında animasyonlu speech bubble gösterilir
+- `typing_start` broadcast eventi: metin yazılınca tetiklenir, 2s sonra otomatik söner
+
+#### 📢 Sistem Mesajları
+- Oyuncu odaya katılınca / ayrılınca sohbette sistem mesajı gösterilir (`player_joined`, `player_left`)
+- `room_closed` broadcast: host maçı bitirince tüm clientlar bilgilendirilir
+
+#### 🌐 Ağ / Performans
+- Hız tabanlı extrapolasyon lerp: `receivedAt` timestamp + `0.28` lerp faktörü — host 30fps güncelleme gönderse bile uzak oyuncu hareketi görsel 60fps akıcılığında
+
+---
 
 ### v0.1.0 — Misafir Kasma Düzeltmesi, Gelişmiş Yapay Zeka & Daha Geniş Kaleler (18 Haziran 2026)
 
@@ -298,4 +329,16 @@ bash github-sync.sh push "NovaBall: güncelleme"
 
 - `pnpm-workspace` skill: workspace yapısı, TypeScript kurulumu
 - `supabase/` klasörü: SQL migration dosyaları (Supabase SQL Editor'da çalıştır)
-- `supabase/migrations/20260614_001_novaball_schema.sql`: Tam şema (tüm tablolar, RLS, RPC'ler)
+- `supabase/migrations/20260614_001_novaball_schema.sql`: Tam şema (tüm tablolar, RLS, RPC'ler) — **ilk kurulumda çalıştır**
+- `supabase/migrations/20260618_003_room_cleanup.sql`: `room_leave` RPC (host çıkışı + stale oda temizliği) — v0.1.1 ile eklendi
+- `supabase/migrations/20260618_004_room_leave_fix.sql`: `room_leave` RPC JSONB düzeltmesi (guest lobi çıkışı) — v0.1.2 ile eklendi; **mutlaka çalıştır**
+
+### SQL Çalıştırma Sırası (Supabase SQL Editor)
+
+| Sıra | Dosya | Açıklama |
+|------|-------|---------|
+| 1 | `20260614_001_novaball_schema.sql` | Tam şema — ilk kurulum |
+| 2 | `20260618_003_room_cleanup.sql` | room_leave v2 + stale temizlik |
+| 3 | `20260618_004_room_leave_fix.sql` | room_leave JSONB düzeltmesi (en güncel) |
+
+> **Not**: 3 numaralı dosya 2 numarayı geçersiz kılar. Sadece ilk kez kuruyorsan 1 → 3 sırasıyla çalıştır yeterli. Daha önce 1 ve 2'yi çalıştırdıysan sadece 3'ü çalıştırman yeterli.
