@@ -783,16 +783,21 @@ export function useMultiplayerPhysics({
           lp.kickCharge = sp.kickCharge;
           g.kickCharge[sp.username] = sp.kickCharge;
           if (sp.username === localUsername) {
-            // Lokal oyuncu: büyük tahmin hatalarını kademeli düzelt, küçükleri yoksay
+            // Lokal oyuncu: yalnızca büyük tahmin hatalarını düzelt.
+            // HIZ (vx/vy) hiç güncellenmez — host state gecikmelidir, anlık snap client
+            // prediction'ı bozar ve görsel titreme yaratır.
             const errX = sp.x - lp.x, errY = sp.y - lp.y;
             const err  = Math.sqrt(errX * errX + errY * errY);
-            if (err > 60) {
-              lp.x = sp.x; lp.y = sp.y;                  // büyük sapma → snap
-            } else if (err > 6) {
-              lp.x += errX * 0.15; lp.y += errY * 0.15;  // küçük sapma → yumuşak düzeltme
+            if (err > 100) {
+              // Çok büyük sapma (duvar/gol teleport): anlık snap + hız senkronu
+              lp.x = sp.x; lp.y = sp.y;
+              lp.vx = sp.vx; lp.vy = sp.vy;
+            } else if (err > 25) {
+              // Orta sapma: çok hafif çekiş — titremeye yol açmayacak kadar yavaş
+              lp.x += errX * 0.06; lp.y += errY * 0.06;
+              // Hız güncellenmez — client prediction devam etsin
             }
-            // Hızı her zaman host'tan al (fizik tutarlılığı)
-            lp.vx = sp.vx; lp.vy = sp.vy;
+            // < 25px sapma: hiçbir şey yapma — client prediction yeterince doğru
           } else {
             // Uzak oyuncular: hedefi kaydet, RAF loop'ta her frame'de yumuşak lerp uygulanır (60fps akıcı)
             g.remoteTargets[sp.username] = { x: sp.x, y: sp.y, vx: sp.vx, vy: sp.vy, receivedAt: Date.now() };
@@ -906,15 +911,23 @@ export function useMultiplayerPhysics({
             g.ball.vx = g.ballTarget.vx; g.ball.vy = g.ballTarget.vy;
           } else {
             const bErr = Math.sqrt((g.ballTarget.x - g.ball.x) ** 2 + (g.ballTarget.y - g.ball.y) ** 2);
-            if (bErr > 80) {
-              // Büyük sapma → anlık snap
+            if (bErr > 100) {
+              // Büyük sapma → anlık snap + hız senkronu
               g.ball.x = g.ballTarget.x; g.ball.y = g.ballTarget.y;
-            } else {
-              // Küçük sapma → 0.30 lerp faktörüyle kademeli düzeltme
-              g.ball.x += (g.ballTarget.x - g.ball.x) * 0.30;
-              g.ball.y += (g.ballTarget.y - g.ball.y) * 0.30;
+              g.ball.vx = g.ballTarget.vx; g.ball.vy = g.ballTarget.vy;
+            } else if (bErr > 15) {
+              // Orta sapma → hafif pozisyon çekişi; hızı güncelleme (jitter önleme)
+              g.ball.x += (g.ballTarget.x - g.ball.x) * 0.18;
+              g.ball.y += (g.ballTarget.y - g.ball.y) * 0.18;
+              // Hız: sadece büyük hız farkı varsa düzelt
+              const dvx = g.ballTarget.vx - g.ball.vx;
+              const dvy = g.ballTarget.vy - g.ball.vy;
+              const dv = Math.sqrt(dvx * dvx + dvy * dvy);
+              if (dv > 3) {
+                g.ball.vx += dvx * 0.25; g.ball.vy += dvy * 0.25;
+              }
             }
-            g.ball.vx = g.ballTarget.vx; g.ball.vy = g.ballTarget.vy;
+            // < 15px sapma: hiçbir şey yapma — client prediction yeterince doğru
           }
         }
         // Uzak oyuncular için her frame'de sürekli lerp: host'tan gelen hedeflere doğru 60fps akıcı hareket.
