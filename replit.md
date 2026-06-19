@@ -389,6 +389,8 @@ bash github-sync.sh push "NovaBall: güncelleme"
 - `supabase/migrations/20260614_001_novaball_schema.sql`: Tam şema (tüm tablolar, RLS, RPC'ler) — **ilk kurulumda çalıştır**
 - `supabase/migrations/20260618_003_room_cleanup.sql`: `room_leave` RPC (host çıkışı + stale oda temizliği) — v0.1.1 ile eklendi; `cleanup_stale_rooms()` için `DROP FUNCTION IF EXISTS` eklendi (return type çakışması düzeltildi)
 - `supabase/migrations/20260618_004_room_leave_fix.sql`: `room_leave` RPC JSONB düzeltmesi (guest lobi çıkışı) — v0.1.2 ile eklendi; **mutlaka çalıştır**
+- `supabase/migrations/20260619_005_reviews_comments.sql`: Yorum & değerlendirme tabloları (`game_reviews`, `game_comments`, `comment_votes`) + RLS — v0.1.3 ile eklendi
+- `supabase/migrations/20260619_006_reviews_rls_fix.sql`: Review/yorum RLS `auth.users` izin hatası düzeltmesi — `auth.jwt()` ile yeniden yazıldı; **yıldız değiştirince 42501 hatası alıyorsan çalıştır**
 
 ### SQL Çalıştırma Sırası (Supabase SQL Editor)
 
@@ -396,6 +398,8 @@ bash github-sync.sh push "NovaBall: güncelleme"
 |------|-------|---------|
 | 1 | `20260614_001_novaball_schema.sql` | Tam şema — ilk kurulum |
 | 2 | `20260618_003_room_cleanup.sql` | room_leave v2 + stale temizlik |
-| 3 | `20260618_004_room_leave_fix.sql` | room_leave JSONB düzeltmesi (en güncel) |
+| 3 | `20260618_004_room_leave_fix.sql` | room_leave JSONB düzeltmesi |
+| 4 | `20260619_005_reviews_comments.sql` | Yorum & değerlendirme tabloları |
+| 5 | `20260619_006_reviews_rls_fix.sql` | RLS `auth.users` → `auth.jwt()` düzeltmesi |
 
-> **Not**: 3 numaralı dosya 2 numarayı geçersiz kılar. Sadece ilk kez kuruyorsan 1 → 3 sırasıyla çalıştır yeterli. Daha önce 1 ve 2'yi çalıştırdıysan sadece 3'ü çalıştırman yeterli.
+> **Not**: İlk kez kuruyorsan 1 → 5 sırasıyla çalıştır. Sadece review 42501 hatasını düzeltmek istiyorsan yalnızca **5** numaralı dosyayı çalıştır yeterli.
