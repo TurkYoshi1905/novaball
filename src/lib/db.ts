@@ -3,7 +3,6 @@ import { supabase } from "./supabase";
 export interface PlayerRow {
   username: string;
   display_name: string;
-  email?: string;
   rp: number;
   current_rank: string;
   total_matches: number;
@@ -80,14 +79,12 @@ export async function getPlayerByAuthId(authId: string): Promise<PlayerRow | nul
 export async function createPlayer(
   username: string,
   displayName: string,
-  email: string,
   authId: string,
 ): Promise<void> {
-  // SECURITY DEFINER RPC kullanılır — session olmadan (e-posta doğrulama öncesi) da çalışır
+  // SECURITY DEFINER RPC — email artık players tablosunda saklanmıyor (güvenlik)
   const { error } = await supabase.rpc("create_player", {
     p_username:     username,
     p_display_name: displayName,
-    p_email:        email,
     p_auth_id:      authId,
   });
   if (error) throw error;

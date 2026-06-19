@@ -66,7 +66,7 @@ export default function App() {
       const email = session?.user?.email;
       if (uname && email) {
         try {
-          await createPlayer(uname, dname ?? uname, email, authId);
+          await createPlayer(uname, dname ?? uname, authId);
           player = await getPlayerByAuthId(authId);
         } catch { /* sessizce geç */ }
       }

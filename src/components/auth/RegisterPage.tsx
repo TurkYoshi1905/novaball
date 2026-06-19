@@ -117,7 +117,7 @@ export default function RegisterPage({ onSuccess, onGoLogin }: Props) {
       const { data, error } = await signUp(email, password, usernameClean, displayName.trim());
       if (error) { setGlobalErr(error.message); return; }
       if (data.user) {
-        await createPlayer(usernameClean, displayName.trim(), email, data.user.id);
+        await createPlayer(usernameClean, displayName.trim(), data.user.id);
       }
       onSuccess(email);
     } catch (err: unknown) {
