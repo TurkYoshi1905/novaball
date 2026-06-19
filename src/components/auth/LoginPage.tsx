@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Eye, EyeOff, Loader2, ChevronRight } from "lucide-react";
 import { signIn } from "../../lib/auth";
-import { findEmailByUsername } from "../../lib/db";
+import { verifyUsernameEmail } from "../../lib/db";
 
 interface Props {
   onGoRegister: () => void;
@@ -36,14 +36,10 @@ export default function LoginPage({ onGoRegister, onGoForgot }: Props) {
 
     setLoading(true);
     try {
-      // Kullanıcı adı ile e-posta eşleşmesini doğrula
-      const storedEmail = await findEmailByUsername(usernameClean);
-      if (!storedEmail) {
-        setErrors(prev => ({ ...prev, username: "Bu kullanıcı adı bulunamadı" }));
-        return;
-      }
-      if (storedEmail.toLowerCase() !== email.toLowerCase()) {
-        setGlobalErr("Kullanıcı adı ve e-posta eşleşmiyor.");
+      // Kullanıcı adı + e-posta eşleşmesini sunucu tarafında doğrula (e-posta istemciye gönderilmez)
+      const matched = await verifyUsernameEmail(usernameClean, email);
+      if (!matched) {
+        setGlobalErr("Kullanıcı adı veya e-posta hatalı.");
         return;
       }
 

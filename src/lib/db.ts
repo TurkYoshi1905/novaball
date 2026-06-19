@@ -57,12 +57,13 @@ export async function isUsernameAvailable(username: string): Promise<boolean> {
 }
 
 /**
- * Returns the email stored for a given username (used for username-based login).
+ * Kullanıcı adı + e-posta çiftini sunucu tarafında doğrular.
+ * E-postayı istemciye ASLA döndürmez — sadece eşleşme var/yok cevabı verir.
  */
-export async function findEmailByUsername(username: string): Promise<string | null> {
+export async function verifyUsernameEmail(username: string, email: string): Promise<boolean> {
   const { data } = await supabase
-    .rpc("get_email_by_username", { p_username: username });
-  return (data as string | null) ?? null;
+    .rpc("verify_username_email", { p_username: username, p_email: email });
+  return data === true;
 }
 
 export async function getPlayerByAuthId(authId: string): Promise<PlayerRow | null> {
