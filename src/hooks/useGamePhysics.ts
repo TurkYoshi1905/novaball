@@ -71,6 +71,7 @@ interface GR {
   prevShootHeld: boolean;      // bir önceki frame'de şut basılı mıydı
   lastShooterTeam: "red" | "blue" | null;  // en son şut atan takım (kendi kalesine atma önlemi için)
   aiWobbleT: number;           // AI dribble salınım zaman sayacı (frame bazlı)
+  kickoffBlockTeam: "red" | "blue" | null; // gol atan takım gol sonrası orta çizgiyi geçemez
 }
 
 interface Options {
@@ -98,7 +99,7 @@ export function useGamePhysics({ username, displayName, canvasRef, onScoreChange
     playerFacingX: 1, playerFacingY: 0, aiFacingX: -1, aiFacingY: 0,
     aiStamina: STAMINA_MAX, aiSprinting: false, matchEnded: false,
     kickCharge: 0, prevShootHeld: false, lastShooterTeam: null,
-    aiWobbleT: 0,
+    aiWobbleT: 0, kickoffBlockTeam: null,
   });
 
   const resetPos = useCallback(() => {
@@ -165,7 +166,20 @@ export function useGamePhysics({ username, displayName, canvasRef, onScoreChange
 
       if (s.goalState) {
         s.goalState.timer -= dt;
-        if (s.goalState.timer <= 0) { s.goalState = null; resetPos(); }
+        if (s.goalState.timer <= 0) {
+          const scoredTeam = s.goalState.team;
+          s.goalState = null;
+          resetPos();
+          // Kick-off mekaniği: top, kick-off alacak takımın yarısına hafifçe yönelir.
+          // Gol atan takım, rakip topa değene kadar orta çizgiyi geçemez.
+          if (scoredTeam === "red") {
+            s.ball.vx = 0.5;        // top sağa (mavinin yarısına)
+            s.kickoffBlockTeam = "red";  // kırmızı bloke
+          } else if (scoredTeam === "blue") {
+            s.ball.vx = -0.5;       // top sola (kırmızının yarısına)
+            s.kickoffBlockTeam = "blue"; // mavi bloke
+          }
+        }
       } else if (!s.matchEnded) {
         const mob = mobileInputRef?.current ?? null;
         updatePhysics(s, dtF, mob, kb);
@@ -273,13 +287,36 @@ function updatePhysics(s: GR, dtF: number, mob: MobileInput | null, kb: Keybindi
     s.player.x += s.player.vx * dtF; s.player.y += s.player.vy * dtF;
     clampField(s.player); attachBall(s.player, s.ball, s.playerFacingX, s.playerFacingY);
     checkAISteal(s);
+    // Kick-off serbest bırakma: mavi (AI) topa dokunursa kırmızı blok kalkar
+    if (s.kickoffBlockTeam === "red") s.kickoffBlockTeam = null;
   } else {
     s.player.x += s.player.vx * dtF; s.player.y += s.player.vy * dtF;
     clampField(s.player);
     if (s.hasBall === null && dist2(s.player.x, s.player.y, s.ball.x, s.ball.y) <= POSSESS_DIST) {
       if (Math.sqrt(s.ball.vx ** 2 + s.ball.vy ** 2) < 8) {
         s.hasBall = "player"; attachBall(s.player, s.ball, s.playerFacingX, s.playerFacingY);
+        // Kick-off serbest bırakma: kırmızı (player) topa dokunursa mavi blok kalkar
+        if (s.kickoffBlockTeam === "blue") s.kickoffBlockTeam = null;
       }
+    }
+  }
+
+  // ── Kick-off sınırı uygula ────────────────────────────────────────────────
+  if (s.kickoffBlockTeam === "red") {
+    // Kırmızı attı → kırmızı (player) orta çizginin sağına geçemez
+    const CENTER_X = 600; // CANVAS_WIDTH / 2
+    const pr = s.player.radius;
+    if (s.player.x > CENTER_X - pr) {
+      s.player.x = CENTER_X - pr;
+      if (s.player.vx > 0) s.player.vx = 0;
+    }
+  } else if (s.kickoffBlockTeam === "blue") {
+    // Mavi attı → mavi (AI) orta çizginin soluna geçemez
+    const CENTER_X = 600;
+    const pr = s.aiPlayer.radius;
+    if (s.aiPlayer.x < CENTER_X + pr) {
+      s.aiPlayer.x = CENTER_X + pr;
+      if (s.aiPlayer.vx < 0) s.aiPlayer.vx = 0;
     }
   }
 

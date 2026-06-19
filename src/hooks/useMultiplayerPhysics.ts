@@ -86,9 +86,10 @@ interface GR {
   lastInput:    Input;               // delta: son gönderilen girdi
   lastSync:     number;
   lastInputBc:  number;
-  remoteTargets: Record<string, { x: number; y: number; vx: number; vy: number; receivedAt: number }>; // uzak oyuncu lerp hedefleri
-  typingSet:     Set<string>;  // şu an yazı yazan oyuncuların username seti
-  drawTs:        number;       // RAF timestamp (animasyon için)
+  remoteTargets:    Record<string, { x: number; y: number; vx: number; vy: number; receivedAt: number }>; // uzak oyuncu lerp hedefleri
+  typingSet:        Set<string>;  // şu an yazı yazan oyuncuların username seti
+  drawTs:           number;       // RAF timestamp (animasyon için)
+  kickoffBlockTeam: Team | null;  // gol atan takım, rakip topa değene kadar orta çizgiyi geçemez
 }
 
 interface Options {
@@ -104,6 +105,7 @@ interface Options {
   onChatReceived?:    (msg: ChatMessage) => void;
   isCustomRoom?:      boolean;
   onRoomClosed?:      () => void;
+  chatFocusedRef?:    React.RefObject<boolean>;
 }
 
 // ─── Top iliştirme: oyuncunun önüne yapıştır ─────────────────────────────────
@@ -150,7 +152,7 @@ function tryKick(
 }
 
 export function useMultiplayerPhysics({
-  canvasRef, match, localUsername, localDisplayName, isHost, ranked, mobileInputRef, onGameEnd, onOpponentForfeit, onChatReceived, isCustomRoom, onRoomClosed,
+  canvasRef, match, localUsername, localDisplayName, isHost, ranked, mobileInputRef, onGameEnd, onOpponentForfeit, onChatReceived, isCustomRoom, onRoomClosed, chatFocusedRef,
 }: Options) {
   const [hudScore,        setHudScore]        = useState<Score>({ red: 0, blue: 0 });
   const [hudTime,         setHudTime]         = useState(ranked ? RANKED_DURATION_MS : 0);
@@ -206,9 +208,10 @@ export function useMultiplayerPhysics({
       facingX, facingY, kickCharge, kickCd, prevShoot, inputs,
       lastSync: 0, lastInputBc: 0,
       lastInput: { dx: 0, dy: 0, shoot: false, sprint: false },
-      remoteTargets: {},
-      typingSet:     new Set<string>(),
-      drawTs:        0,
+      remoteTargets:    {},
+      typingSet:        new Set<string>(),
+      drawTs:           0,
+      kickoffBlockTeam: null,
     };
   }, [match, ranked]);
 
@@ -229,7 +232,22 @@ export function useMultiplayerPhysics({
   // ─── Fizik adımı (yalnızca host çalıştırır) ───────────────────────────────
   const physicsStep = useCallback((gr: GR, dt: number, localPlayer: string | null = null) => {
     if (gr.phase === "goal_pause") {
-      if (Date.now() >= gr.goalPauseEnd) { gr.phase = "playing"; resetPositions(gr); }
+      if (Date.now() >= gr.goalPauseEnd) {
+        const scoredTeam = gr.lastGoalTeam;
+        gr.phase = "playing";
+        resetPositions(gr);
+        // Kick-off mekaniği: top, kick-off alacak takımın yarısına hafifçe yönelir.
+        // Gol atan takım, rakip topa dokunana kadar orta çizgiyi geçemez.
+        if (scoredTeam === "red") {
+          // Kırmızı attı → top sağa (mavinin yarısına) → kırmızı bloke
+          gr.ball.vx = 0.5;
+          gr.kickoffBlockTeam = "red";
+        } else if (scoredTeam === "blue") {
+          // Mavi attı → top sola (kırmızının yarısına) → mavi bloke
+          gr.ball.vx = -0.5;
+          gr.kickoffBlockTeam = "blue";
+        }
+      }
       return;
     }
     if (gr.phase === "finished") return;
@@ -262,6 +280,17 @@ export function useMultiplayerPhysics({
       // Saha sınırlarına sabitle (kale bölgesi hariç — top var orada)
       p.x = clamp(safe(p.x + p.vx), FIELD_LEFT + PLAYER_RADIUS, FIELD_RIGHT - PLAYER_RADIUS);
       p.y = clamp(safe(p.y + p.vy), FIELD_TOP  + PLAYER_RADIUS, FIELD_BOTTOM - PLAYER_RADIUS);
+
+      // ── Kick-off sınırı ─────────────────────────────────────────────────────
+      // Gol atan takım, karşı takım topa değene kadar orta çizgiyi geçemez
+      if (gr.kickoffBlockTeam === "red" && p.team === "red" && p.x > CENTER_X - PLAYER_RADIUS) {
+        p.x = CENTER_X - PLAYER_RADIUS;
+        if (p.vx > 0) p.vx = 0;
+      }
+      if (gr.kickoffBlockTeam === "blue" && p.team === "blue" && p.x < CENTER_X + PLAYER_RADIUS) {
+        p.x = CENTER_X + PLAYER_RADIUS;
+        if (p.vx < 0) p.vx = 0;
+      }
 
       // ── Şut şarjı — yalnızca gerçek input sahibi oyuncular için ─────────────
       // Host: localPlayer === null → tüm oyuncular işlenir
@@ -296,6 +325,14 @@ export function useMultiplayerPhysics({
       }
       // Her zaman güncel kickCharge değerini player'a yansıt (remote için game_state'ten gelir)
       p.kickCharge = gr.kickCharge[p.username] ?? 0;
+    }
+
+    // ── Kick-off serbest bırakma: kick-off alan takım topa dokunursa blok kalkar ─
+    if (gr.kickoffBlockTeam && gr.hasBall) {
+      const possessor = gr.players.find(p => p.username === gr.hasBall);
+      if (possessor && possessor.team !== gr.kickoffBlockTeam) {
+        gr.kickoffBlockTeam = null;
+      }
     }
 
     // ── Top sahipliği: sahip hareketi ve çalma ────────────────────────────
@@ -421,6 +458,14 @@ export function useMultiplayerPhysics({
       // Kale içi arka duvar
       if (gr.ball.x < GOAL_LEFT_X)  { gr.ball.x = GOAL_LEFT_X  + BALL_RADIUS; gr.ball.vx =  Math.abs(gr.ball.vx) * BALL_RESTITUTION; }
       if (gr.ball.x > GOAL_RIGHT_X) { gr.ball.x = GOAL_RIGHT_X - BALL_RADIUS; gr.ball.vx = -Math.abs(gr.ball.vx) * BALL_RESTITUTION; }
+    }
+
+    // ── Kesin saha sınırı (sert clamp — top asla sahayı terk edemez) ──────────
+    if (!isNaN(gr.ball.x) && isFinite(gr.ball.x)) {
+      gr.ball.x = Math.max(GOAL_LEFT_X + BALL_RADIUS, Math.min(GOAL_RIGHT_X - BALL_RADIUS, gr.ball.x));
+    }
+    if (!isNaN(gr.ball.y) && isFinite(gr.ball.y)) {
+      gr.ball.y = Math.max(FIELD_TOP + BALL_RADIUS, Math.min(FIELD_BOTTOM - BALL_RADIUS, gr.ball.y));
     }
   }, [ranked, resetPositions]);
 
@@ -773,10 +818,16 @@ export function useMultiplayerPhysics({
       // Lokal girdi oku
       const keys = keysRef.current;
       const mob  = mobileInputRef?.current;
-      const dx     = (keys.has(kb.moveRight) || keys.has("ArrowRight") ? 1 : 0) - (keys.has(kb.moveLeft)  || keys.has("ArrowLeft") ? 1 : 0) + (mob?.dx ?? 0);
-      const dy     = (keys.has(kb.moveDown)  || keys.has("ArrowDown")  ? 1 : 0) - (keys.has(kb.moveUp)    || keys.has("ArrowUp")   ? 1 : 0) + (mob?.dy ?? 0);
-      const shoot  = keys.has(kb.shoot)  || keys.has(ALT_KEYS.shoot  ?? "KeyX")      || (mob?.shoot  ?? false);
-      const sprint = keys.has(kb.sprint) || keys.has(ALT_KEYS.sprint ?? "ShiftRight") || (mob?.sprint ?? false);
+      // Sohbet odaklanınca klavye girdisi devre dışı bırakılır
+      const chatFocused = chatFocusedRef?.current ?? false;
+      const rawDx  = (keys.has(kb.moveRight) || keys.has("ArrowRight") ? 1 : 0) - (keys.has(kb.moveLeft)  || keys.has("ArrowLeft") ? 1 : 0) + (mob?.dx ?? 0);
+      const rawDy  = (keys.has(kb.moveDown)  || keys.has("ArrowDown")  ? 1 : 0) - (keys.has(kb.moveUp)    || keys.has("ArrowUp")   ? 1 : 0) + (mob?.dy ?? 0);
+      const rawShoot  = keys.has(kb.shoot)  || keys.has(ALT_KEYS.shoot  ?? "KeyX")      || (mob?.shoot  ?? false);
+      const rawSprint = keys.has(kb.sprint) || keys.has(ALT_KEYS.sprint ?? "ShiftRight") || (mob?.sprint ?? false);
+      const dx     = chatFocused ? 0 : rawDx;
+      const dy     = chatFocused ? 0 : rawDy;
+      const shoot  = chatFocused ? false : rawShoot;
+      const sprint = chatFocused ? false : rawSprint;
       g.inputs[localUsername] = { dx: clamp(dx, -1, 1), dy: clamp(dy, -1, 1), shoot, sprint };
 
       // Transport tipine göre sync aralığını belirle (429 koruması)

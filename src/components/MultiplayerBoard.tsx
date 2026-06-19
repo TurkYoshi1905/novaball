@@ -80,15 +80,19 @@ function calcMPRP(
 export default function MultiplayerBoard({
   match, localUsername, localDisplayName, isHost, ranked, isCustomRoom, onMatchEnd, onLeave,
 }: Props) {
-  const canvasRef      = useRef<HTMLCanvasElement>(null);
-  const mobileInputRef = useRef(createMobileInput());
-  const [chatOpen,   setChatOpen]   = useState(false);
-  const [messages,   setMessages]   = useState<ChatMessage[]>([]);
-  const [inputText,  setInputText]  = useState("");
-  const [goalFlash,  setGoalFlash]  = useState<Team | null>(null);
+  const canvasRef           = useRef<HTMLCanvasElement>(null);
+  const mobileInputRef      = useRef(createMobileInput());
+  const chatInputFocusedRef = useRef(false);
+  const [chatOpen,     setChatOpen]    = useState(false);
+  const [unreadCount,  setUnreadCount] = useState(0);
+  const [messages,     setMessages]    = useState<ChatMessage[]>([]);
+  const [inputText,    setInputText]   = useState("");
+  const [goalFlash,    setGoalFlash]   = useState<Team | null>(null);
   const chatEndRef      = useRef<HTMLDivElement>(null);
   const endHandledRef   = useRef(false);
   const typingTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const chatOpenRef     = useRef(false);
+  useEffect(() => { chatOpenRef.current = chatOpen; }, [chatOpen]);
 
   const myTeam: Team   = match.redTeam.some(m => m.username === localUsername) ? "red" : "blue";
   const oppTeam: Team  = myTeam === "red" ? "blue" : "red";
@@ -102,6 +106,10 @@ export default function MultiplayerBoard({
   // Sohbet mesajı geldiğinde
   const handleChatReceived = useCallback((msg: ChatMessage) => {
     setMessages(prev => [...prev, msg]);
+    // Sohbet kapalıysa okunmamış sayacını artır
+    if (!chatOpenRef.current) {
+      setUnreadCount(prev => prev + 1);
+    }
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   }, [chatEndRef]);
 
@@ -162,6 +170,7 @@ export default function MultiplayerBoard({
     mobileInputRef, onGameEnd: finishGame, onOpponentForfeit: handleOpponentForfeit,
     onChatReceived: handleChatReceived, isCustomRoom,
     onRoomClosed: onLeave,
+    chatFocusedRef: chatInputFocusedRef,
   });
 
   // Gol flash — phase "goal_pause" olunca tetikle, "playing"'e dönnce temizle
@@ -266,11 +275,19 @@ export default function MultiplayerBoard({
         <div className="hud-side hud-right">
           <div className="hud-desktop-btns">
             <button
-              onClick={() => setChatOpen(o => !o)}
-              className={`hud-ctrl-btn ${chatOpen ? "!bg-[#4af]/20 !text-[#4af] !border-[#4af]/30" : ""}`}
+              onClick={() => { setChatOpen(o => !o); setUnreadCount(0); }}
+              className={`hud-ctrl-btn relative ${chatOpen ? "!bg-[#4af]/20 !text-[#4af] !border-[#4af]/30" : ""}`}
               title="Sohbet"
             >
               <MessageCircle size={13} />
+              {unreadCount > 0 && !chatOpen && (
+                <span
+                  className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full text-[9px] font-black text-white px-0.5"
+                  style={{ background: "#ef4444", lineHeight: 1 }}
+                >
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </button>
             <button onClick={handleLeave} className="hud-ctrl-btn" title="Ayrıl">✕</button>
           </div>
@@ -406,7 +423,9 @@ export default function MultiplayerBoard({
                     if (typingTimerRef.current) { clearTimeout(typingTimerRef.current); typingTimerRef.current = null; }
                   }
                 }}
+                onFocus={() => { chatInputFocusedRef.current = true; }}
                 onBlur={() => {
+                  chatInputFocusedRef.current = false;
                   sendTyping(false);
                   if (typingTimerRef.current) { clearTimeout(typingTimerRef.current); typingTimerRef.current = null; }
                 }}

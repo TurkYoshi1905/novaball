@@ -222,6 +222,33 @@ bash github-sync.sh push "NovaBall: güncelleme"
 
 ## Sürüm Geçmişi
 
+### v0.1.3 — Misafir Oynama, Kick-Off Mekaniği, Sohbet İyileştirmeleri & İncelemeler (19 Haziran 2026)
+
+> Landing Page'e kayıtsız oyun dene butonu eklendi. Gol sonrası kick-off pozisyonu uygulandı. Çok oyunculu sohbet klavyeyi artık bloklamaması düzeltildi + okunmamış mesaj badge. İnceleme sayfası eklendi (puan, yorum, beğeni, yanıt).
+
+#### 🎮 Misafir Oynama
+- Landing Page'e **"Kayıt Olmadan Dene"** butonu eklendi
+- `TestBoard.tsx`: hesap oluşturmadan AI'ya karşı oynanan misafir deney tahtası
+- Üstte Kayıt Ol / Giriş Yap yönlendirme banner'ı
+
+#### ⚽ Kick-Off Mekaniği
+- Gol sonrasında resetPos'ta top, kick-off alacak takımın yarısına hafifçe fırlatılır
+- `kickoffBlockTeam`: gol atan takım orta çizgiyi rakip topa değene kadar geçemez
+- AI modu (`useGamePhysics`) ve çok oyunculu mod (`useMultiplayerPhysics`) her ikisinde de aktif
+
+#### 💬 Sohbet İyileştirmeleri (Multiplayer)
+- Sohbet input'u odaklandığında klavye tuşları oyun hareket kontrollerini engellemez (`chatFocusedRef`)
+- Sohbet kapalıyken gelen yeni mesajlarda kırmızı **okunmamış mesaj sayacı** badge görünür
+- Sohbet açılınca sayaç sıfırlanır
+
+#### ⭐ İnceleme Sayfası
+- `ReviewPage.tsx`: oyunculara yıldız puanı (1–5) verme, yorum yazma imkânı
+- Yorumlara beğeni ve yanıt desteği
+- `game_reviews`, `game_comments`, `comment_votes` Supabase tabloları
+- SQL migration: `supabase/migrations/20260619_005_reviews_comments.sql`
+
+---
+
 ### v0.1.2 — Yapay Zeka Gerçekçiliği, Depar Titreşme Düzeltmesi & Premium Podium (18 Haziran 2026)
 
 > AI depar titreşmesi ve merkez donma sorunu giderildi. Dribble sırasında sinüs tabanlı lateral salınım eklendi. Lider tablosu podium'u gerçek basamak yükseklikleriyle premium şekilde yeniden tasarlandı.

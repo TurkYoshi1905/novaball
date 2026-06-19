@@ -23,6 +23,8 @@ import MatchIntroPage from "./components/MatchIntroPage";
 import MultiplayerBoard from "./components/MultiplayerBoard";
 import MultiplayerResult from "./components/MultiplayerResult";
 import SettingsPage from "./components/SettingsPage";
+import TestBoard from "./components/TestBoard";
+import ReviewPage from "./components/ReviewPage";
 import type { AppScreen, MatchResultData, GameMode, MatchSession, CustomRoom, MPResult } from "./types/game";
 import { loadRP, saveRP, getRankForRP, calcRPForWin, calcRPLoss } from "./utils/rankSystem";
 import { getPlayerByAuthId, createPlayer, updateLastSeen, saveMatch } from "./lib/db";
@@ -274,7 +276,8 @@ export default function App() {
     );
   }
 
-  if (screen === "landing") return <LandingPage onLogin={() => setScreen("login")} onRegister={() => setScreen("register")} />;
+  if (screen === "landing") return <LandingPage onLogin={() => setScreen("login")} onRegister={() => setScreen("register")} onTryGuest={() => setScreen("test-board")} />;
+  if (screen === "test-board") return <TestBoard onLogin={() => setScreen("login")} onRegister={() => setScreen("register")} onBack={() => setScreen("landing")} />;
   if (screen === "login")        return <LoginPage onGoRegister={() => setScreen("register")} onGoForgot={() => setScreen("forgot-password")} />;
   if (screen === "register")     return (
     <RegisterPage
@@ -300,6 +303,18 @@ export default function App() {
         onShowLeaderboard={() => setScreen("leaderboard")}
         onShowProfile={() => { setViewingUser(username); setPrevScreen("menu"); setScreen("profile"); }}
         onShowSettings={() => setScreen("settings")}
+        onShowReviews={() => setScreen("reviews")}
+      />
+    );
+  }
+
+  if (screen === "reviews") {
+    return (
+      <ReviewPage
+        username={username}
+        displayName={displayName}
+        onBack={() => setScreen("menu")}
+        onViewProfile={(u) => { setViewingUser(u); setPrevScreen("reviews"); setScreen("profile"); }}
       />
     );
   }

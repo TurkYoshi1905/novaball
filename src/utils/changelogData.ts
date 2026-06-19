@@ -16,6 +16,27 @@ export interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.1.3",
+    date: "19 Haziran 2026",
+    label: "minor",
+    title: "Misafir Modu, Geri Bildirim Sistemi & Fizik Optimizasyonları",
+    description:
+      "v0.1.3; kayıt gerektirmeyen misafir oyun modu, topluluk yorum ve puanlama sistemi, gol sonrası adil santral mekaniği, sohbet sırasında karakter hareketi engeli ve okunmamış mesaj bildirimi eklendi. Çok oyunculu maçlarda topun saha dışına çıkması sorunu giderildi.",
+    changes: [
+      { type: "feature", text: "Misafir oyun modu: kayıt veya giriş yapmadan yapay zekaya karşı serbest maç. Karşılama sayfasından direkt erişilebilir." },
+      { type: "feature", text: "Discord topluluğuna katılım butonu karşılama sayfasına eklendi." },
+      { type: "feature", text: "Misafir panelinde üstte belirgin Kayıt Ol / Giriş Yap aksiyonları gösterilir." },
+      { type: "feature", text: "Topluluk Yorum & Değerlendirme sistemi: 1–5 yıldız puanlama, ortalama puan ve toplam değerlendiren sayısı." },
+      { type: "feature", text: "Yorumlar: yazma, beğenme, beğenmeme, yanıt verme ve yalnızca kendi yorumunu silme." },
+      { type: "feature", text: "Yorumlarda zaman damgası GG.AA.YYYY SS:DD formatında, tıklanabilir kullanıcı profil avatarı." },
+      { type: "feature", text: "Ana menüye 'Yorum Yap & Değerlendir' butonu eklendi." },
+      { type: "fix",     text: "Çok oyunculu ve özel oda maçlarında kaleye sert atış sonrası topun saha dışına çıkması kesin olarak engellendi — tüm sınır değerleri sıkılaştırıldı." },
+      { type: "feature", text: "Gol sonrası adil santral mekaniği: gol atan takım rakip topa dokunana kadar orta saha çizgisini geçemez. Top, kick-off alacak takımın yarısına hafifçe yönelir." },
+      { type: "fix",     text: "Sohbet alanına yazarken W/A/S/D ve yön tuşları artık karakteri hareket ettirmiyor. Mesaj gönderildikten veya odak değiştiğinde hareket tekrar aktif olur." },
+      { type: "feature", text: "Okunmamış sohbet mesajı sayacı: sohbet kapalıyken gelen mesajlar kırmızı rozet olarak sohbet ikonunda gösterilir, ikona tıklanınca sıfırlanır." },
+    ],
+  },
+  {
     version: "0.1.2",
     date: "18 Haziran 2026",
     label: "patch",

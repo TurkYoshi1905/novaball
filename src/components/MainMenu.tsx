@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trophy, LogOut, Users, Zap, Star, Settings, Swords, HelpCircle, ScrollText } from "lucide-react";
+import { Trophy, LogOut, Users, Zap, Star, Settings, Swords, HelpCircle, ScrollText, MessageSquarePlus } from "lucide-react";
 import { FOUNDING_DATE } from "../types/game";
 import { loadRP, getRankForRP, getRPProgressInRank, ALL_RANKS } from "../utils/rankSystem";
 import CHANGELOG from "../utils/changelogData";
@@ -17,11 +17,12 @@ interface Props {
   onShowLeaderboard: () => void;
   onShowProfile: () => void;
   onShowSettings: () => void;
+  onShowReviews: () => void;
 }
 
 export default function MainMenu({
   username, displayName, onPlay, onMatchmaking, onCustomRooms,
-  onShowRanks, onShowChangelog, onLogout, onShowLeaderboard, onShowProfile, onShowSettings,
+  onShowRanks, onShowChangelog, onLogout, onShowLeaderboard, onShowProfile, onShowSettings, onShowReviews,
 }: Props) {
   const [showHowTo,  setShowHowTo]  = useState(false);
   const [showLogout, setShowLogout] = useState(false);
@@ -282,6 +283,34 @@ export default function MainMenu({
             <Star size={12} fill="#facc15" className="text-[#facc15]" />
             <Star size={12} fill="#facc15" className="text-[#facc15]" />
             <span className="text-white/55 text-[11px] font-bold ml-1 group-hover:text-white/80 transition-colors">Top 100 →</span>
+          </div>
+        </button>
+
+        {/* ── Yorum & Değerlendirme ──────────────────────────── */}
+        <button
+          onClick={onShowReviews}
+          className="group relative w-full max-w-xl flex items-center gap-4 px-5 py-4 rounded-2xl transition-all active:scale-[0.98] text-left overflow-hidden"
+          style={{
+            background: "linear-gradient(135deg,rgba(167,139,250,0.08),rgba(139,92,246,0.05))",
+            border: "1px solid rgba(167,139,250,0.2)",
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(167,139,250,0.4)"; (e.currentTarget as HTMLElement).style.background = "linear-gradient(135deg,rgba(167,139,250,0.14),rgba(139,92,246,0.09))"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(167,139,250,0.2)"; (e.currentTarget as HTMLElement).style.background = "linear-gradient(135deg,rgba(167,139,250,0.08),rgba(139,92,246,0.05))"; }}>
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ background: "linear-gradient(135deg,rgba(167,139,250,0.06),transparent)" }} />
+          <div className="relative w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(167,139,250,0.18)", border: "1.5px solid rgba(167,139,250,0.38)" }}>
+            <MessageSquarePlus size={20} className="text-[#a78bfa]" />
+          </div>
+          <div className="relative flex flex-col flex-1 text-left min-w-0">
+            <p className="text-white font-black text-[15px] group-hover:text-white transition-colors">Yorum Yap & Değerlendir</p>
+            <p className="text-white/55 text-[12px] font-semibold">Toplulukla görüşlerini paylaş</p>
+          </div>
+          <div className="relative flex items-center gap-1 flex-shrink-0">
+            {[1,2,3,4,5].map(i => (
+              <svg key={i} width="10" height="10" viewBox="0 0 24 24" fill="#a78bfa" className="opacity-70"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            ))}
+            <span className="text-white/40 text-[11px] font-bold ml-1 group-hover:text-white/70 transition-colors">→</span>
           </div>
         </button>
 

@@ -110,7 +110,8 @@ export type AppScreen =
   | "leaderboard" | "profile"
   | "mod-select" | "matchmaking"
   | "custom-rooms" | "create-room" | "room-lobby"
-  | "match-intro" | "multiplayer" | "mp-result";
+  | "match-intro" | "multiplayer" | "mp-result"
+  | "test-board" | "reviews";
 
 export type BallOwner = "player" | "ai" | null;
 
