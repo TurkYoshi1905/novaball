@@ -87,6 +87,7 @@ interface GR {
   lastSync:     number;
   lastInputBc:  number;
   remoteTargets:    Record<string, { x: number; y: number; vx: number; vy: number; receivedAt: number }>; // uzak oyuncu lerp hedefleri
+  ballTarget:       { x: number; y: number; vx: number; vy: number } | null; // top lerp hedefi (misafir kasmasını önler)
   typingSet:        Set<string>;  // şu an yazı yazan oyuncuların username seti
   drawTs:           number;       // RAF timestamp (animasyon için)
   kickoffBlockTeam: Team | null;  // gol atan takım, rakip topa değene kadar orta çizgiyi geçemez
@@ -209,6 +210,7 @@ export function useMultiplayerPhysics({
       lastSync: 0, lastInputBc: 0,
       lastInput: { dx: 0, dy: 0, shoot: false, sprint: false },
       remoteTargets:    {},
+      ballTarget:       null,
       typingSet:        new Set<string>(),
       drawTs:           0,
       kickoffBlockTeam: null,
@@ -413,42 +415,38 @@ export function useMultiplayerPhysics({
         }
       }
 
-      // Sol kale (mavi atar)
+      // Sol kale (mavi atar) — gol çizgisi geçişi (FIELD_LEFT) yeterlidir; GOAL_LEFT_X derinlik kontrolü yok
       if (gr.ball.x - BALL_RADIUS < FIELD_LEFT) {
         if (gr.ball.y >= GOAL_TOP && gr.ball.y <= GOAL_BOTTOM) {
-          if (gr.ball.x < GOAL_LEFT_X) {
-            // Kendi kalesine atma kontrolü: kırmızı oyuncu sol kaleye (kendi kalesine) atarsa geri sektir
-            const scorer = gr.hasBall ?? gr.lastShooter;
-            const scorerTeam = scorer ? (gr.players.find(p => p.username === scorer)?.team ?? null) : null;
-            if (scorerTeam === "red") {
-              gr.ball.x = FIELD_LEFT + BALL_RADIUS + 2; gr.ball.vx = Math.abs(gr.ball.vx) * BALL_RESTITUTION;
-            } else {
-              gr.score.blue++; gr.lastGoalTeam = "blue";
-              if (scorer) gr.goalCounts[scorer] = (gr.goalCounts[scorer] ?? 0) + 1;
-              gr.lastShooter = null;
-              gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
-            }
+          // Kendi kalesine atma kontrolü: kırmızı oyuncu sol kaleye (kendi kalesine) atarsa geri sektir
+          const scorer = gr.hasBall ?? gr.lastShooter;
+          const scorerTeam = scorer ? (gr.players.find(p => p.username === scorer)?.team ?? null) : null;
+          if (scorerTeam === "red") {
+            gr.ball.x = FIELD_LEFT + BALL_RADIUS + 2; gr.ball.vx = Math.abs(gr.ball.vx) * BALL_RESTITUTION;
+          } else {
+            gr.score.blue++; gr.lastGoalTeam = "blue";
+            if (scorer) gr.goalCounts[scorer] = (gr.goalCounts[scorer] ?? 0) + 1;
+            gr.lastShooter = null;
+            gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
           }
         } else {
           gr.ball.x = FIELD_LEFT + BALL_RADIUS; gr.ball.vx = Math.abs(gr.ball.vx) * BALL_RESTITUTION;
         }
       }
 
-      // Sağ kale (kırmızı atar)
+      // Sağ kale (kırmızı atar) — gol çizgisi geçişi (FIELD_RIGHT) yeterlidir
       if (gr.ball.x + BALL_RADIUS > FIELD_RIGHT) {
         if (gr.ball.y >= GOAL_TOP && gr.ball.y <= GOAL_BOTTOM) {
-          if (gr.ball.x > GOAL_RIGHT_X) {
-            // Kendi kalesine atma kontrolü: mavi oyuncu sağ kaleye (kendi kalesine) atarsa geri sektir
-            const scorer = gr.hasBall ?? gr.lastShooter;
-            const scorerTeam = scorer ? (gr.players.find(p => p.username === scorer)?.team ?? null) : null;
-            if (scorerTeam === "blue") {
-              gr.ball.x = GOAL_RIGHT_X - BALL_RADIUS - 2; gr.ball.vx = -Math.abs(gr.ball.vx) * BALL_RESTITUTION;
-            } else {
-              gr.score.red++; gr.lastGoalTeam = "red";
-              if (scorer) gr.goalCounts[scorer] = (gr.goalCounts[scorer] ?? 0) + 1;
-              gr.lastShooter = null;
-              gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
-            }
+          // Kendi kalesine atma kontrolü: mavi oyuncu sağ kaleye (kendi kalesine) atarsa geri sektir
+          const scorer = gr.hasBall ?? gr.lastShooter;
+          const scorerTeam = scorer ? (gr.players.find(p => p.username === scorer)?.team ?? null) : null;
+          if (scorerTeam === "blue") {
+            gr.ball.x = FIELD_RIGHT - BALL_RADIUS - 2; gr.ball.vx = -Math.abs(gr.ball.vx) * BALL_RESTITUTION;
+          } else {
+            gr.score.red++; gr.lastGoalTeam = "red";
+            if (scorer) gr.goalCounts[scorer] = (gr.goalCounts[scorer] ?? 0) + 1;
+            gr.lastShooter = null;
+            gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
           }
         } else {
           gr.ball.x = FIELD_RIGHT - BALL_RADIUS; gr.ball.vx = -Math.abs(gr.ball.vx) * BALL_RESTITUTION;
@@ -458,6 +456,47 @@ export function useMultiplayerPhysics({
       // Kale içi arka duvar
       if (gr.ball.x < GOAL_LEFT_X)  { gr.ball.x = GOAL_LEFT_X  + BALL_RADIUS; gr.ball.vx =  Math.abs(gr.ball.vx) * BALL_RESTITUTION; }
       if (gr.ball.x > GOAL_RIGHT_X) { gr.ball.x = GOAL_RIGHT_X - BALL_RADIUS; gr.ball.vx = -Math.abs(gr.ball.vx) * BALL_RESTITUTION; }
+    }
+
+    // ── Sahipli top gol kontrolü ──────────────────────────────────────────────
+    // hasBall ayarlıyken if(!gr.hasBall) bloğu atlandığı için ayrı kontrol gerekir.
+    // Top, kale çizgisini (FIELD_LEFT/FIELD_RIGHT) geçince gol sayılır.
+    if (gr.hasBall && gr.phase === "playing") {
+      const holder = gr.players.find(p => p.username === gr.hasBall);
+      if (holder) {
+        // Sol kale (kırmızının kalesi): mavi oyuncu atar
+        if (gr.ball.x - BALL_RADIUS < FIELD_LEFT && gr.ball.y >= GOAL_TOP && gr.ball.y <= GOAL_BOTTOM) {
+          if (holder.team === "red") {
+            // Kendi kalesine: topu bırak ve sektir
+            gr.hasBall = null;
+            gr.ball.x = FIELD_LEFT + BALL_RADIUS + 2;
+            gr.ball.vx = Math.abs(holder.vx) * BALL_RESTITUTION + 2;
+          } else {
+            gr.lastShooter = holder.username;
+            gr.hasBall = null;
+            gr.score.blue++; gr.lastGoalTeam = "blue";
+            gr.goalCounts[holder.username] = (gr.goalCounts[holder.username] ?? 0) + 1;
+            gr.lastShooter = null;
+            gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
+          }
+        }
+        // Sağ kale (mavinin kalesi): kırmızı oyuncu atar
+        else if (gr.ball.x + BALL_RADIUS > FIELD_RIGHT && gr.ball.y >= GOAL_TOP && gr.ball.y <= GOAL_BOTTOM) {
+          if (holder.team === "blue") {
+            // Kendi kalesine: topu bırak ve sektir
+            gr.hasBall = null;
+            gr.ball.x = FIELD_RIGHT - BALL_RADIUS - 2;
+            gr.ball.vx = -(Math.abs(holder.vx) * BALL_RESTITUTION + 2);
+          } else {
+            gr.lastShooter = holder.username;
+            gr.hasBall = null;
+            gr.score.red++; gr.lastGoalTeam = "red";
+            gr.goalCounts[holder.username] = (gr.goalCounts[holder.username] ?? 0) + 1;
+            gr.lastShooter = null;
+            gr.phase = "goal_pause"; gr.goalPauseEnd = Date.now() + GOAL_RESET_DELAY; return;
+          }
+        }
+      }
     }
 
     // ── Kesin saha sınırı (sert clamp — top asla sahayı terk edemez) ──────────
@@ -724,7 +763,8 @@ export function useMultiplayerPhysics({
       // Bu, misafir oyuncunun host ekranında görünmemesi sorununu çözer.
       conn.on<MPGameState>("game_state", state => {
         const g = grRef.current; if (!g) return;
-        g.ball       = { ...state.ball };
+        // Top: snap yerine lerp hedefini kaydet (misafir kasmasını önler)
+        g.ballTarget = { ...state.ball };
         g.score      = { ...state.score };
         g.gameTimeMs = state.gameTimeMs;
         g.hasBall    = state.hasBallUsername ?? null;
@@ -857,6 +897,26 @@ export function useMultiplayerPhysics({
         // Host durumu geldiğinde lerp ile yumuşak reconciliation uygulanır.
         // localUsername geçirilir: yalnızca kendi kick charge hesaplanır (çift-şarj önlemi)
         physicsStep(g, dt, localUsername);
+        // Top lerp: host'tan gelen ballTarget'a kademeli yaklaş (snap yerine — misafir kasmasını önler).
+        // Gol/faz değişimi durumunda anlık snap uygulanır.
+        if (g.ballTarget) {
+          if (g.phase === "goal_pause" || g.phase === "finished") {
+            // Faz değişimi: anlık snap (lerp gecikme yaratmasın)
+            g.ball.x = g.ballTarget.x; g.ball.y = g.ballTarget.y;
+            g.ball.vx = g.ballTarget.vx; g.ball.vy = g.ballTarget.vy;
+          } else {
+            const bErr = Math.sqrt((g.ballTarget.x - g.ball.x) ** 2 + (g.ballTarget.y - g.ball.y) ** 2);
+            if (bErr > 80) {
+              // Büyük sapma → anlık snap
+              g.ball.x = g.ballTarget.x; g.ball.y = g.ballTarget.y;
+            } else {
+              // Küçük sapma → 0.30 lerp faktörüyle kademeli düzeltme
+              g.ball.x += (g.ballTarget.x - g.ball.x) * 0.30;
+              g.ball.y += (g.ballTarget.y - g.ball.y) * 0.30;
+            }
+            g.ball.vx = g.ballTarget.vx; g.ball.vy = g.ballTarget.vy;
+          }
+        }
         // Uzak oyuncular için her frame'de sürekli lerp: host'tan gelen hedeflere doğru 60fps akıcı hareket.
         // Bu yaklaşım 30fps host güncellemelerinin oluşturduğu kasma/titreme sorununu ortadan kaldırır.
         for (const p of g.players) {

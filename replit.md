@@ -119,6 +119,7 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - **İstemci-tarafı tahmin + Lerp reconciliation**:
   - Client kendi girişini her frame'de yerel fizik adımına uygular (60fps akıcı).
   - Host durumu gelince: lokal oyuncu için hata büyüklüğüne göre yumuşak düzeltme (lerp), uzak oyuncular için her zaman lerp.
+  - **Top da lerp ile yumuşatılır** — `ballTarget` aracılığıyla host topunu 0.3 faktörüyle kademeli yaklaşma.
   - Bu sayede jitter ve titreme ortadan kalkar.
 - **Güç barı**: Host, her oyuncunun `kickCharge` değerini `game_state`'e dahil eder; tüm istemciler tüm oyuncuların şarj barını görür.
 - Supabase Realtime broadcast kanalları kullanılır (WebSocket üzerinde).
@@ -200,8 +201,11 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - `MultiplayerBoard` artık `game-board-outer` CSS sistemi kullanıyor (GameBoard ile aynı HUD)
 - Özel odalar her zaman `ranked: false` — `CreateRoomPage`'de toggle yok
 - **60 FPS + Lerp reconciliation**: Client tahmini + host durumu lerp ile birleştirilir; jitter yoktur
+- **Top lerp**: Misafir kasmasını önlemek için `ballTarget` aracılığıyla top 0.3 faktörüyle kademeli güncellenir
 - **Adaptif sync hızı**: WebSocket'te 33ms/16ms, Supabase'de 80ms/50ms
 - **Kick charge görünürlüğü**: Tüm oyuncuların güç barı herkese görünür (koşul `charge > 0.01`, transport fark etmez)
+- **Gol tespiti**: Top kale çizgisini (FIELD_LEFT/FIELD_RIGHT) geçince gol sayılır — eski GOAL_LEFT_X/GOAL_RIGHT_X derin kontrol kaldırıldı (sert clamp nedeniyle topun asla oraya ulaşamaması düzeltildi)
+- **Sahipli top gol**: `hasBall` ayarlıyken top kale çizgisini geçerse gol sayılır (ayrı kontrol bloğu, `if (!gr.hasBall)` dışında)
 - **Görünürlük düzeltmesi**: `onGameState` artık TÜM oyuncuların konumunu günceller (lokal oyuncu dahil) — host her zaman yetkilidir
 - **Özel oda maçı çıkışı**: Oyuncu maçtan çıkınca `room_leave` RPC → oda Supabase'den silinir; rakip otomatik lobiye döner
 - **createRoom maxPlayers**: 1v1=2, 2v2=4, 3v3=6, 4v4=8, 5v5=10 — her takım maks `maxPlayers/2` oyuncu
@@ -221,6 +225,20 @@ bash github-sync.sh push "NovaBall: güncelleme"
 ```
 
 ## Sürüm Geçmişi
+
+### v0.1.4 — Gol & Misafir Kasma Düzeltmeleri, Discord İkonu, Replit Geçişi (19 Haziran 2026)
+
+> Çok oyunculu gol sayılmaması ve misafir kasma sorunları kökten çözüldü. Discord ikonu PNG ile güncellendi. Proje Replit pnpm workspace'e taşındı.
+
+#### 🐛 Hata Düzeltmeleri
+- **Gol sayılmıyor düzeltildi**: Sert clamp (`GOAL_LEFT_X + BALL_RADIUS`) topun kale çizgisine ulaşmasını engelliyordu. Gol tespiti artık `FIELD_LEFT`/`FIELD_RIGHT` kale çizgisi geçişinde tetikleniyor.
+- **Sahipli top golü**: `hasBall` ayarlıyken top kale çizgisini geçerse gol sayılır — önceden bu durum hiç işlenmiyordu.
+- **Misafir kasma düzeltildi**: Top konumu artık `ballTarget` aracılığıyla 0.3 lerp faktörüyle yumuşatılıyor; host güncellemelerinin 33ms'de bir snap yapması görünmez hale getirildi.
+
+#### 🎨 Arayüz
+- Discord navbar ikonu inline SVG'den PNG resmine güncellendi.
+
+---
 
 ### v0.1.3 — Misafir Oynama, Kick-Off Mekaniği, Sohbet İyileştirmeleri & İncelemeler (19 Haziran 2026)
 
