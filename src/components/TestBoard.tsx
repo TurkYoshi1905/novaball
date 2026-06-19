@@ -57,61 +57,8 @@ export default function TestBoard({ onLogin, onRegister, onBack }: Props) {
         </div>
       </div>
 
-      {/* ── Üst Kayıt Banneri ── */}
-      <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none">
-        <motion.div
-          initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="flex items-center justify-between px-4 py-2.5 pointer-events-auto"
-          style={{
-            background: "linear-gradient(90deg,rgba(7,13,22,0.97),rgba(10,18,35,0.97))",
-            borderBottom: "1px solid rgba(68,170,255,0.15)",
-            backdropFilter: "blur(12px)",
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] animate-pulse flex-shrink-0" />
-            <span className="text-white/70 text-xs font-semibold">
-              Misafir modu — kayıt olmadan oynuyorsun
-            </span>
-            <span className="hidden sm:inline text-white/35 text-xs">
-              · İstatistik ve sıralama kaydedilmiyor
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <motion.button
-              whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-              onClick={onLogin}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-              style={{
-                color: "rgba(255,255,255,0.75)",
-                background: "rgba(255,255,255,0.07)",
-                border: "1px solid rgba(255,255,255,0.15)",
-              }}
-            >
-              <LogIn size={11} />
-              Giriş Yap
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.04, boxShadow: "0 0 20px rgba(68,170,255,0.35)" }}
-              whileTap={{ scale: 0.97 }}
-              onClick={onRegister}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black text-white transition-all"
-              style={{
-                background: "linear-gradient(135deg,#1a5f8a,#4af)",
-                border: "1px solid rgba(68,170,255,0.4)",
-              }}
-            >
-              <UserPlus size={11} />
-              Kayıt Ol
-            </motion.button>
-          </div>
-        </motion.div>
-      </div>
-
       {/* ── HUD ── */}
-      <div className="game-hud" style={{ paddingTop: "2.8rem" }}>
+      <div className="game-hud">
         <div className="hud-side hud-left">
           <div className="hud-dot hud-dot-red" />
           <span className="hud-username">Misafir</span>
@@ -138,7 +85,7 @@ export default function TestBoard({ onLogin, onRegister, onBack }: Props) {
       </div>
 
       {/* ── Canvas ── */}
-      <div className="game-canvas-zone" style={{ paddingTop: "2.8rem" }}>
+      <div className="game-canvas-zone">
         <div className="game-canvas-wrapper">
           <canvas
             ref={canvasRef}
@@ -159,14 +106,69 @@ export default function TestBoard({ onLogin, onRegister, onBack }: Props) {
         </div>
       </div>
 
-      {/* ── Klavye ipuçları ── */}
-      {!isTouchDevice && (
-        <div className="keyboard-hints">
-          <span><kbd className="kbd-key">W A S D</kbd> Hareket</span>
-          <span><kbd className="kbd-key">SPACE/X</kbd> Şut</span>
-          <span><kbd className="kbd-key">Sol ⇧</kbd> Depar</span>
+      {/* ── Alt Banner: misafir uyarısı + klavye ipuçları + kayıt butonları ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="flex-shrink-0 flex items-center justify-between px-4"
+        style={{
+          height: 38,
+          background: "linear-gradient(90deg,rgba(7,13,22,0.97),rgba(10,18,35,0.97))",
+          borderTop: "1px solid rgba(68,170,255,0.15)",
+          backdropFilter: "blur(12px)",
+        }}
+      >
+        {/* Sol: misafir modu etiketi */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] animate-pulse flex-shrink-0" />
+          <span className="text-white/60 text-xs font-semibold whitespace-nowrap">
+            Misafir modu
+          </span>
+          <span className="hidden md:inline text-white/30 text-xs whitespace-nowrap">
+            · istatistik kaydedilmiyor
+          </span>
         </div>
-      )}
+
+        {/* Orta: klavye ipuçları (masaüstü) */}
+        {!isTouchDevice && (
+          <div className="hidden sm:flex items-center gap-4 text-[11px] text-white/25 flex-shrink-0">
+            <span><kbd className="kbd-key">W A S D</kbd> Hareket</span>
+            <span><kbd className="kbd-key">SPACE/X</kbd> Şut</span>
+            <span><kbd className="kbd-key">Sol ⇧</kbd> Depar</span>
+          </div>
+        )}
+
+        {/* Sağ: kayıt butonları */}
+        <div className="flex items-center gap-2 flex-1 justify-end">
+          <motion.button
+            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+            onClick={onLogin}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+            style={{
+              color: "rgba(255,255,255,0.75)",
+              background: "rgba(255,255,255,0.07)",
+              border: "1px solid rgba(255,255,255,0.15)",
+            }}
+          >
+            <LogIn size={11} />
+            Giriş Yap
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.04, boxShadow: "0 0 20px rgba(68,170,255,0.35)" }}
+            whileTap={{ scale: 0.97 }}
+            onClick={onRegister}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black text-white transition-all"
+            style={{
+              background: "linear-gradient(135deg,#1a5f8a,#4af)",
+              border: "1px solid rgba(68,170,255,0.4)",
+            }}
+          >
+            <UserPlus size={11} />
+            Kayıt Ol
+          </motion.button>
+        </div>
+      </motion.div>
 
       {/* ── Mobil Kontroller ── */}
       {isTouchDevice && (
