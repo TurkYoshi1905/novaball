@@ -109,6 +109,30 @@ export function onSystemEvent(
   });
 }
 
+// ─── Spectator Events ─────────────────────────────────────────────────────────
+
+export interface SpectatorPayload {
+  username:    string;
+  displayName: string;
+  action:      "join" | "leave";
+}
+
+export function broadcastSpectator(
+  channel: RealtimeChannel,
+  payload: SpectatorPayload
+): void {
+  channel.send({ type: "broadcast", event: "spectator_event", payload });
+}
+
+export function onSpectatorEvent(
+  channel: RealtimeChannel,
+  cb: (payload: SpectatorPayload) => void
+): RealtimeChannel {
+  return channel.on("broadcast", { event: "spectator_event" }, ({ payload }) => {
+    cb(payload as SpectatorPayload);
+  });
+}
+
 // ─── Presence (oyuncu sayısı) ─────────────────────────────────────────────────
 
 export function trackPresence(

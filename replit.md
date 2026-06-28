@@ -73,6 +73,7 @@ Login/Register → EmailVerify → MainMenu
 MainMenu → GameBoard (Serbest/AI)
 MainMenu → ModSelect → Matchmaking (ranked) → MatchIntro → MultiplayerBoard → MultiplayerResult
 MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → MultiplayerBoard → custom-rooms
+MainMenu → CustomRooms → (CANLI oda) → SpectatorBoard (izleyici modu)
 ```
 
 ## Mimari Kararlar
@@ -227,6 +228,20 @@ bash github-sync.sh push "NovaBall: güncelleme"
 ```
 
 ## Sürüm Geçmişi
+
+### v0.1.9 — İzleyici Modu, Premium Özel Odalar & Stabilite (28 Haziran 2026)
+
+> Özel oda maçları izleyici olarak takip edilebilir. Otomatik kamera, oyuncu kilitleme, gerçek zamanlı izleyici sayısı. Özel Odalar sayfası yeniden tasarlandı. Site yükleme süresi kısaltıldı.
+
+#### ✨ Yeni Özellikler
+- **İzleyici Modu**: CANLI odalarda "İzle" → `SpectatorBoard`. Kamera topu takip eder (1.35× zoom), oyuncu seçilince 1.6× zoom.
+- **İzleyici sayacı**: Oda kartlarında ve SpectatorBoard HUD'unda gerçek zamanlı izleyici sayısı.
+- **İzleyici sohbet**: İzleyiciler sohbete katılabilir; mesajlar oyunculara görünür.
+- **Özel Odalar sayfası yeniden tasarlandı**: Takım avatar halkaları, fill bar, arama kutusu, canlı pulse, "İzle" / "Katıl" butonları.
+- Site yükleme guard 6s → 3s; `supabase.ts` eksik env var için konsol uyarısı; Ayarlar `v0.1.9`.
+- SQL: `custom_rooms.spectator_count`, `spectator_join` / `spectator_leave` RPC'leri → `20260628_009_spectator_mode.sql`
+
+---
 
 ### v0.1.8 — Ghost Player Düzeltmesi, Guest Titreme Giderme, MainMenu Parlaklık & Landing Güncelleme (28 Haziran 2026)
 

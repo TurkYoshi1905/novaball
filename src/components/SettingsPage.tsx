@@ -194,7 +194,7 @@ export default function SettingsPage({
         <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl flex-shrink-0"
           style={{ background: "rgba(68,170,255,0.1)", border: "1px solid rgba(68,170,255,0.22)" }}>
           <Sparkles size={11} className="text-[#4aaeff]" />
-          <span className="text-[#4aaeff] font-black text-xs">v0.0.9</span>
+          <span className="text-[#4aaeff] font-black text-xs">v0.1.9</span>
         </div>
       </header>
 

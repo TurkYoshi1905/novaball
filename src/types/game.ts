@@ -111,7 +111,8 @@ export type AppScreen =
   | "mod-select" | "matchmaking"
   | "custom-rooms" | "create-room" | "room-lobby"
   | "match-intro" | "multiplayer" | "mp-result"
-  | "test-board" | "reviews";
+  | "test-board" | "reviews"
+  | "spectator";
 
 export type BallOwner = "player" | "ai" | null;
 
@@ -196,16 +197,17 @@ export interface MatchSession {
 }
 
 export interface CustomRoom {
-  id:           string;
-  name:         string;
-  hostUsername: string;
-  maxPlayers:   number;
-  redTeam:      TeamMember[];
-  blueTeam:     TeamMember[];
-  status:       RoomStatus;
-  channelId:    string;
-  createdAt:    string;
-  ranked:       boolean;
+  id:             string;
+  name:           string;
+  hostUsername:   string;
+  maxPlayers:     number;
+  redTeam:        TeamMember[];
+  blueTeam:       TeamMember[];
+  status:         RoomStatus;
+  channelId:      string;
+  createdAt:      string;
+  ranked:         boolean;
+  spectatorCount: number;
 }
 
 export interface MPResult {

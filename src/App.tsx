@@ -17,6 +17,7 @@ import LeaderboardPage from "./components/LeaderboardPage";
 import ModSelectPage from "./components/ModSelectPage";
 import MatchmakingPage from "./components/MatchmakingPage";
 import CustomRoomsPage from "./components/CustomRoomsPage";
+import SpectatorBoard from "./components/SpectatorBoard";
 import CreateRoomPage from "./components/CreateRoomPage";
 import RoomLobbyPage from "./components/RoomLobbyPage";
 import MatchIntroPage from "./components/MatchIntroPage";
@@ -42,8 +43,9 @@ export default function App() {
   const [prevScreen,    setPrevScreen]   = useState<AppScreen>("menu");
   const [selectedMode,  setSelectedMode] = useState<GameMode>("1v1");
   const [currentMatch,  setCurrentMatch] = useState<MatchSession | null>(null);
-  const [currentRoom,   setCurrentRoom]  = useState<CustomRoom | null>(null);
-  const [isHost,        setIsHost]       = useState(false);
+  const [currentRoom,           setCurrentRoom]          = useState<CustomRoom | null>(null);
+  const [currentSpectatingRoom, setCurrentSpectatingRoom] = useState<CustomRoom | null>(null);
+  const [isHost,                setIsHost]                = useState(false);
   const [isCustomRoom,  setIsCustomRoom] = useState(false);
   const lastSeenTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
   const screenRef       = useRef<AppScreen>("landing");
@@ -96,7 +98,7 @@ export default function App() {
     const loadingGuard = setTimeout(() => {
       setIsLoading(false);
       setScreen("landing");
-    }, 6000);
+    }, 3000);
 
     // ── Şifre sıfırlama linki tespiti ──────────────────────────────────────
     // Supabase recovery URL'si: https://app.com/#access_token=...&type=recovery
@@ -393,7 +395,19 @@ export default function App() {
         displayName={displayName}
         onCreateRoom={() => setScreen("create-room")}
         onJoinRoom={(room) => { setCurrentRoom(room); setIsCustomRoom(true); setScreen("room-lobby"); }}
+        onWatchRoom={(room) => { setCurrentSpectatingRoom(room); setScreen("spectator"); }}
         onBack={() => setScreen("menu")}
+      />
+    );
+  }
+
+  if (screen === "spectator" && currentSpectatingRoom) {
+    return (
+      <SpectatorBoard
+        room={currentSpectatingRoom}
+        username={username}
+        displayName={displayName}
+        onLeave={() => { setCurrentSpectatingRoom(null); setScreen("custom-rooms"); }}
       />
     );
   }

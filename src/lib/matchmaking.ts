@@ -137,17 +137,26 @@ export async function updateMatchStatus(matchId: string, status: RoomStatus): Pr
 
 function rowToRoom(data: Record<string, unknown>): CustomRoom {
   return {
-    id:           data.id as string,
-    name:         data.name as string,
-    hostUsername: data.host_username as string,
-    maxPlayers:   data.max_players as number,
-    redTeam:      (data.red_team as TeamMember[]) ?? [],
-    blueTeam:     (data.blue_team as TeamMember[]) ?? [],
-    status:       data.status as RoomStatus,
-    channelId:    data.channel_id as string,
-    createdAt:    data.created_at as string,
-    ranked:       false,
+    id:             data.id as string,
+    name:           data.name as string,
+    hostUsername:   data.host_username as string,
+    maxPlayers:     data.max_players as number,
+    redTeam:        (data.red_team as TeamMember[]) ?? [],
+    blueTeam:       (data.blue_team as TeamMember[]) ?? [],
+    status:         data.status as RoomStatus,
+    channelId:      data.channel_id as string,
+    createdAt:      data.created_at as string,
+    ranked:         false,
+    spectatorCount: (data.spectator_count as number) ?? 0,
   };
+}
+
+export async function joinAsSpectator(roomId: string): Promise<void> {
+  await supabase.rpc("spectator_join", { p_room_id: roomId });
+}
+
+export async function leaveAsSpectator(roomId: string): Promise<void> {
+  await supabase.rpc("spectator_leave", { p_room_id: roomId });
 }
 
 export async function createRoom(
