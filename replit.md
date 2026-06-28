@@ -229,21 +229,28 @@ bash github-sync.sh push "NovaBall: güncelleme"
 
 ## Sürüm Geçmişi
 
-### v0.1.9 — İzleyici Modu, Premium Özel Odalar & Stabilite (28 Haziran 2026)
+### v0.1.5 — Gelişmiş İzleyici Modu, Premium Özel Odalar & Bağlantı Stabilitesi (28 Haziran 2026)
 
-> Özel oda maçları izleyici olarak takip edilebilir. Otomatik kamera, oyuncu kilitleme, gerçek zamanlı izleyici sayısı. Özel Odalar sayfası yeniden tasarlandı. Site yükleme süresi kısaltıldı.
+> İzleyici modu tamamen geliştirildi: gol anında kutlama overlay'i, gelişmiş otomatik kamera ve oyuncu kilitleme. Özel Odalar sayfası premium yeniden tasarım aldı. Site ilk açılışta beyaz ekran / veritabanına bağlanamama sorunu kökten çözüldü.
 
 #### ✨ Yeni Özellikler
-- **İzleyici Modu**: CANLI odalarda "İzle" → `SpectatorBoard`. Kamera topu takip eder (1.35× zoom), oyuncu seçilince 1.6× zoom.
-- **İzleyici sayacı**: Oda kartlarında ve SpectatorBoard HUD'unda gerçek zamanlı izleyici sayısı.
-- **İzleyici sohbet**: İzleyiciler sohbete katılabilir; mesajlar oyunculara görünür.
-- **Özel Odalar sayfası yeniden tasarlandı**: Takım avatar halkaları, fill bar, arama kutusu, canlı pulse, "İzle" / "Katıl" butonları.
-- Site yükleme guard 6s → 3s; `supabase.ts` eksik env var için konsol uyarısı; Ayarlar `v0.1.9`.
-- SQL: `custom_rooms.spectator_count`, `spectator_join` / `spectator_leave` RPC'leri → `20260628_009_spectator_mode.sql`
+- **Gol kutlama overlay'i**: Gol atıldığında tam ekran animasyonlu kutlama — hangi takım attı, anlık skor, takım rengi radyal gradient ile 2.5sn gösterilir.
+- **Gelişmiş otomatik kamera**: Alan sınırları aşılmadan top takibi (1.35×), oyuncu kilitlenince pürüzsüz 1.6× zoom geçişi.
+- **Oyuncu değiştirme**: Alt çubuktaki butonlara tıklayınca kamera seçilen oyuncuya kilitlenir; tekrar tıklanınca top takibine döner.
+- **Özel Odalar premium yeniden tasarım**: Glassmorphism kartlar, gradient accent çizgi, VS divider, takım isim önizlemeleri, fill bar animasyonu, kategori sekmeleri (Tümü / Canlı / Bekliyor), oda ve oyuncu sayacı başlığı.
+- SQL: `reset_room_spectators`, `get_room_spectator_count`, negatif sayaç CHECK constraint → `20260628_010_spectator_v2.sql`
+
+#### 🐛 Hata Düzeltmeleri
+- **Beyaz ekran / bağlanamama**: `getSession()` artık `try/catch` ile sarıldı; ağ hatası veya Supabase erişilememesinde 2sn içinde landing'e düşülür, sonsuz spinner yok.
+- **Yükleme guard**: `loadingGuard` 3s'de tetiklense dahi `.catch()` ile ağ hatası yakalanır — kullanıcı hiçbir durumda takılı kalmaz.
+
+#### 🎨 Arayüz
+- Ayarlar sayfası sürümü `v0.1.5` olarak güncellendi.
+- Changelog verisi: `0.1.9 → 0.1.5`, `0.1.8 → 0.1.4` olarak yeniden numaralandırıldı.
 
 ---
 
-### v0.1.8 — Ghost Player Düzeltmesi, Guest Titreme Giderme, MainMenu Parlaklık & Landing Güncelleme (28 Haziran 2026)
+### v0.1.4 — Ghost Player Düzeltmesi, Guest Titreme Giderme, Ağ Optimizasyonu & Arayüz (28 Haziran 2026)
 
 > Maçtan ayrılan oyuncu artık canvas'ta kalmıyor. Guest oyuncuların titreme/kasma sorunu köklü fizik mimarisi değişikliğiyle giderildi. Ana menü daha parlak ve okunabilir. Landing Page FAQ hataları düzeltildi.
 

@@ -16,32 +16,32 @@ export interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "0.1.9",
+    version: "0.1.5",
     date: "28 Haziran 2026",
     label: "minor",
-    title: "İzleyici Modu, Premium Özel Odalar & Stabilite İyileştirmeleri",
+    title: "Gelişmiş İzleyici Modu, Premium Özel Odalar & Bağlantı Stabilitesi",
     description:
-      "NovaBall v0.1.9; özel oda maçlarını izleyici olarak takip etme, otomatik kamera ve oyuncu değiştirme özelliği getiriyor. Özel Odalar sayfası baştan tasarlandı. Site açılış süresi kısaltıldı ve veritabanı bağlantı güvenilirliği artırıldı.",
+      "NovaBall v0.1.5; izleyici modunu tamamen yeniden tasarladı: gol kutlama overlay'i, premium Özel Odalar sayfası, site ilk açılışta yaşanan beyaz ekran ve veritabanına bağlanamama sorunu kökten çözüldü. Tüm ekranlar daha hızlı, daha güvenilir ve daha görsel açıdan etkileyici hale getirildi.",
     changes: [
-      { type: "feature", text: "İzleyici Modu: devam eden özel oda maçları artık izleyici olarak takip edilebilir. Odalara 'İzle' butonuyla katılım." },
-      { type: "feature", text: "Otomatik kamera: izleyici görünümünde kamera varsayılan olarak topu takip eder; yakınlaştırma ile pürüzsüz kamera hareketi." },
-      { type: "feature", text: "Oyuncu değiştirme: alt çubuktaki oyuncu butonlarına tıklayarak kamerayı belirli bir oyuncuya kilitleyin." },
-      { type: "feature", text: "İzleyici sayacı: odalarda ve izleyici HUD'unda gerçek zamanlı izleyici sayısı gösterilir." },
-      { type: "feature", text: "İzleyici sohbet: izleyiciler oyun içi sohbete katılabilir, oyuncularla mesajlaşabilir." },
-      { type: "design", text: "Özel Odalar sayfası tamamen yeniden tasarlandı: takım avatarları, doluluk barı, izleyici rozeti, arama kutusu, canlı animasyonlar." },
-      { type: "design", text: "Oda kartları: kırmızı/mavi takım üyeleri avatar halkaları, boş slot gösterimi, fill bar ve anlık canlı indicator." },
-      { type: "improvement", text: "Site başlangıç yükleme süresi 6 saniyeden 3 saniyeye indirildi; bağlantı hatalarında landing'e hızlı düşüş." },
-      { type: "improvement", text: "Supabase istemcisi: ortam değişkeni eksikse kullanıcıya anlaşılır hata mesajı gösterilir." },
-      { type: "improvement", text: "Ayarlar sayfası sürüm numarası v0.1.9 olarak güncellendi." },
+      { type: "feature", text: "Gelişmiş İzleyici Modu: gol anında tam ekran kutlama overlay'i — hangi takımın attığı, skor ve animasyonlu konfeti efektiyle birlikte 2.5 saniye gösterilir." },
+      { type: "feature", text: "Otomatik kamera güçlendirildi: kamera topu takip ederken alan sınırları aşılmaz; oyuncu kilitlenince 1.6× zoom ile pürüzsüz kamera geçişi." },
+      { type: "feature", text: "Oyuncu değiştirme: alt çubuktaki oyuncu butonlarına tıklayarak kamera seçilen oyuncuya kilitlenir; ikinci kez tıklayınca top takibine döner." },
+      { type: "feature", text: "İzleyici sayacı odalarda ve HUD'da gerçek zamanlı gösterilir; spectator_join/leave RPC'leri anında senkronize eder." },
+      { type: "feature", text: "İzleyici sohbet: izleyiciler oyun sohbetine katılabilir; mesajlar oyunculara da görünür; izleyici adı mor (#a78bfa) renkte ayrışır." },
+      { type: "design", text: "Özel Odalar sayfası premium olarak yeniden tasarlandı: büyük glassmorphism kartlar, gradient takım panelleri, doluluk barı, izleyici rozeti, hover efektleri ve kategori seçicisi." },
+      { type: "design", text: "Oda kartları: kırmızı/mavi takım avatar halkaları büyütüldü, isim önizlemeleri eklendi, 'CANLI' pulse animasyonu güçlendirildi." },
+      { type: "fix", text: "Siteye ilk girişte beyaz ekran / takılı kalma sorunu düzeltildi: getSession() artık try/catch ile sarıldı; ağ hatası veya Supabase erişilememesi durumunda 2 saniye içinde landing'e düşülür." },
+      { type: "fix", text: "Veritabanına bağlanamama: getSession() network hatası fırlatırsa sessizce landing'e yönlendirme; kullanıcı sonsuz spinner'da kalmaz." },
+      { type: "improvement", text: "Ayarlar sayfası sürüm numarası v0.1.5 olarak güncellendi." },
     ],
   },
   {
-    version: "0.1.8",
+    version: "0.1.4",
     date: "28 Haziran 2026",
     label: "patch",
     title: "Ghost Player Düzeltmesi, Guest Titreme Giderme & MainMenu Parlaklık",
     description:
-      "v0.1.8; maçtan ayrılan oyuncunun canvas'ta kalması sorunu kökten çözüldü. Misafir oyuncuların yaşadığı titreme/kasma problemi çift-fizik mimarisi değişikliğiyle tamamen giderildi. Ana menü daha parlak ve okunabilir hale getirildi. Landing Page FAQ hataları düzeltildi.",
+      "v0.1.4; maçtan ayrılan oyuncunun canvas'ta kalması sorunu kökten çözüldü. Misafir oyuncuların yaşadığı titreme/kasma problemi çift-fizik mimarisi değişikliğiyle tamamen giderildi. Ana menü daha parlak ve okunabilir hale getirildi. Landing Page FAQ hataları düzeltildi.",
     changes: [
       { type: "fix",         text: "Ghost player (hayalet oyuncu) düzeltildi: ayrılan oyuncu artık canvas'ta görünmüyor. player_left handler, g.players/remoteTargets/inputs'tan oyuncuyu kaldırır; top sahipliği temizlenir." },
       { type: "fix",         text: "Guest titreme/kasma kökten giderildi: physicsStep'e shouldMove guard eklendi — misafir modunda yalnızca lokal oyuncunun fiziği çalışır, uzak oyuncular saf lerp ile hareket eder." },

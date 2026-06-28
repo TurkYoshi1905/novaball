@@ -290,6 +290,9 @@ export default function SpectatorBoard({ room, username, displayName, onLeave }:
   const [score, setScore]   = useState({ red: 0, blue: 0 });
   const [timeMs, setTimeMs] = useState(0);
   const [phase, setPhase]   = useState<MPGameState["phase"]>("playing");
+  const [goalTeam,  setGoalTeam]  = useState<Team | null>(null);
+  const [goalScore, setGoalScore] = useState({ red: 0, blue: 0 });
+  const prevScoreRef = useRef({ red: 0, blue: 0 });
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // ── WS channel setup ──
@@ -298,6 +301,17 @@ export default function SpectatorBoard({ room, username, displayName, onLeave }:
 
     onGameState(ch, (gs) => {
       gsRef.current = gs;
+      const prev = prevScoreRef.current;
+      if (gs.score.red > prev.red) {
+        setGoalTeam("red");
+        setGoalScore({ ...gs.score });
+        setTimeout(() => setGoalTeam(null), 2500);
+      } else if (gs.score.blue > prev.blue) {
+        setGoalTeam("blue");
+        setGoalScore({ ...gs.score });
+        setTimeout(() => setGoalTeam(null), 2500);
+      }
+      prevScoreRef.current = gs.score;
       setScore(gs.score);
       setTimeMs(gs.gameTimeMs);
       setPhase(gs.phase);
@@ -455,6 +469,57 @@ export default function SpectatorBoard({ room, username, displayName, onLeave }:
 
   return (
     <div style={{ background: "#070d16", width: "100%", height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+
+      {/* ── Goal Celebration Overlay ── */}
+      <AnimatePresence>
+        {goalTeam && (
+          <motion.div
+            key="goal-overlay"
+            initial={{ opacity: 0, scale: 1.08 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.3 }}
+            style={{
+              position: "absolute", inset: 0, zIndex: 50,
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              background: goalTeam === "red"
+                ? "radial-gradient(ellipse at center,rgba(239,68,68,0.22) 0%,rgba(7,13,22,0.88) 70%)"
+                : "radial-gradient(ellipse at center,rgba(59,130,246,0.22) 0%,rgba(7,13,22,0.88) 70%)",
+              backdropFilter: "blur(4px)",
+              pointerEvents: "none",
+            }}
+          >
+            <motion.div
+              initial={{ y: -20 }} animate={{ y: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}
+            >
+              <div style={{ fontSize: 56 }}>⚽</div>
+              <div style={{
+                fontSize: 44, fontWeight: 900, letterSpacing: "-0.02em",
+                color: goalTeam === "red" ? "#ff6b6b" : "#60a5fa",
+                textShadow: goalTeam === "red" ? "0 0 40px rgba(239,68,68,0.7)" : "0 0 40px rgba(59,130,246,0.7)",
+              }}>GOL!</div>
+              <div style={{
+                fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.65)", letterSpacing: "0.06em", textTransform: "uppercase",
+              }}>
+                {goalTeam === "red" ? "Kırmızı Takım" : "Mavi Takım"} attı
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 8 }}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ color: "#ff6b6b", fontSize: 36, fontWeight: 900, textShadow: "0 0 20px rgba(239,68,68,0.5)" }}>{goalScore.red}</div>
+                  <div style={{ color: "rgba(239,68,68,0.4)", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em" }}>KIRMIZI</div>
+                </div>
+                <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 22, fontWeight: 300 }}>—</div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ color: "#60a5fa", fontSize: 36, fontWeight: 900, textShadow: "0 0 20px rgba(59,130,246,0.5)" }}>{goalScore.blue}</div>
+                  <div style={{ color: "rgba(59,130,246,0.4)", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em" }}>MAVİ</div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Top HUD ── */}
       <div style={{

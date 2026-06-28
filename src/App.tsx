@@ -110,8 +110,12 @@ export default function App() {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
       clearTimeout(loadingGuard);
+      if (error) {
+        console.warn("[NovaBall] Supabase bağlantı hatası:", error.message);
+        setScreen("landing"); setIsLoading(false); return;
+      }
       if (!session) { setScreen("landing"); setIsLoading(false); return; }
 
       // Şifre sıfırlama akışı: loadPlayer çağırma, doğrudan reset-password'a git.
@@ -129,6 +133,10 @@ export default function App() {
         return;
       }
       loadPlayer(session.user.id).finally(() => setIsLoading(false));
+    }).catch(() => {
+      clearTimeout(loadingGuard);
+      setScreen("landing");
+      setIsLoading(false);
     });
 
     // ENTRY_SCREENS: TOKEN_REFRESHED gelince "zaten bu ekrandayız, atlama" kontrolü için
