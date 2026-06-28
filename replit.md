@@ -446,5 +446,7 @@ bash github-sync.sh push "NovaBall: güncelleme"
 | 5 | `20260619_006_reviews_rls_fix.sql` | RLS `auth.users` → `auth.jwt()` düzeltmesi |
 | 6 | `20260619_007_security_hardening.sql` | Güvenlik sertleştirme: get_email_by_username kaldırma, verify_username_email ekleme, hatalı RLS politikaları temizleme |
 | 7 | `20260619_008_drop_players_email.sql` | **KRİTİK**: players.email kolonu kaldırıldı; verify_username_email artık auth.users'dan okur; create_player yeni imza |
+| 8 | `20260628_009_spectator_mode.sql` | İzleyici modu: `spectator_count` kolonu, `spectator_join`/`spectator_leave`/`reset_spectators` RPC'leri |
+| 9 | `20260628_010_spectator_v2.sql` | İzleyici v2: `reset_room_spectators`, `get_room_spectator_count`, negatif sayaç CHECK constraint — v0.1.5 |
 
 > **Not**: İlk kez kuruyorsan 1 → 7 sırasıyla çalıştır. Sadece güvenlik düzeltmelerini uygulamak istiyorsan **6 → 7** sırasıyla çalıştır.
