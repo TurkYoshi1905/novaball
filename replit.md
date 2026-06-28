@@ -111,15 +111,16 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 
 ### Çok Oyunculu (Multiplayer)
 - **Host**, fiziği çalıştırır ve durumu yayınlar.
-  - WebSocket aktifse: `SYNC_MS=33` (~30fps)
-  - Supabase fallback'te: `SYNC_MS=80` (~12fps, rate limit koruması)
+  - WebSocket aktifse: `SYNC_MS=25` (~40fps)
+  - Supabase fallback'te: `SYNC_MS=50` (~20fps, rate limit koruması)
 - **Client**, girdi değişince anında yayınlar; heartbeat `INPUT_HBEAT=200ms`.
   - WebSocket aktifse: `INPUT_MS=16` (~60fps)
-  - Supabase fallback'te: `INPUT_MS=50` (~20fps)
+  - Supabase fallback'te: `INPUT_MS=30` (~33fps)
 - **İstemci-tarafı tahmin + Lerp reconciliation**:
   - Client kendi girişini her frame'de yerel fizik adımına uygular (60fps akıcı).
-  - Host durumu gelince: lokal oyuncu için hata büyüklüğüne göre yumuşak düzeltme (lerp), uzak oyuncular için her zaman lerp.
-  - **Top da lerp ile yumuşatılır** — `ballTarget` aracılığıyla host topunu 0.3 faktörüyle kademeli yaklaşma.
+  - **Misafir modunda `physicsStep` yalnızca lokal oyuncu için çalışır** — uzak oyuncular yalnızca lerp ile hareket eder; çift-fizik titremesi yoktur.
+  - Host durumu gelince: lokal oyuncu için hata büyüklüğüne göre yumuşak düzeltme (lerp 0.06), uzak oyuncular için her zaman lerp (0.32).
+  - **Top da lerp ile yumuşatılır** — `ballTarget` aracılığıyla 0.22 faktörüyle kademeli yaklaşma.
   - Bu sayede jitter ve titreme ortadan kalkar.
 - **Güç barı**: Host, her oyuncunun `kickCharge` değerini `game_state`'e dahil eder; tüm istemciler tüm oyuncuların şarj barını görür.
 - Supabase Realtime broadcast kanalları kullanılır (WebSocket üzerinde).
@@ -201,17 +202,18 @@ MainMenu → CustomRooms → CreateRoom / RoomLobby → MatchIntro → Multiplay
 - `MultiplayerBoard` artık `game-board-outer` CSS sistemi kullanıyor (GameBoard ile aynı HUD)
 - Özel odalar her zaman `ranked: false` — `CreateRoomPage`'de toggle yok
 - **60 FPS + Lerp reconciliation**: Client tahmini + host durumu lerp ile birleştirilir; jitter yoktur
-- **Top lerp**: Misafir kasmasını önlemek için `ballTarget` aracılığıyla top 0.3 faktörüyle kademeli güncellenir
-- **Adaptif sync hızı**: WebSocket'te 33ms/16ms, Supabase'de 80ms/50ms
+- **shouldMove guard**: Misafir modunda `physicsStep`, uzak oyuncuların hareketini atlar — sadece lokal oyuncu fiziği çalışır; uzak oyuncular saf lerp ile güncellenir (v0.1.8)
+- **Player leave canvas fix**: `player_left` handler artık `g.players`, `g.remoteTargets`, `g.inputs`'tan siler; `game_state` handler da state'te olmayan oyuncuları kaldırır (v0.1.8)
+- **Top lerp**: `ballTarget` aracılığıyla 0.22 faktörüyle kademeli güncellenir (eski: 0.18)
+- **Adaptif sync hızı**: WebSocket'te 25ms/16ms, Supabase'de 50ms/30ms (eski WS: 33ms)
+- **Uzak oyuncu lerp**: 0.32 faktör + hız tabanlı extrapolasyon (eski: 0.28)
 - **Kick charge görünürlüğü**: Tüm oyuncuların güç barı herkese görünür (koşul `charge > 0.01`, transport fark etmez)
-- **Gol tespiti**: Top kale çizgisini (FIELD_LEFT/FIELD_RIGHT) geçince gol sayılır — eski GOAL_LEFT_X/GOAL_RIGHT_X derin kontrol kaldırıldı (sert clamp nedeniyle topun asla oraya ulaşamaması düzeltildi)
-- **Sahipli top gol**: `hasBall` ayarlıyken top kale çizgisini geçerse gol sayılır (ayrı kontrol bloğu, `if (!gr.hasBall)` dışında)
-- **Görünürlük düzeltmesi**: `onGameState` artık TÜM oyuncuların konumunu günceller (lokal oyuncu dahil) — host her zaman yetkilidir
+- **Gol tespiti**: Top kale çizgisini (FIELD_LEFT/FIELD_RIGHT) geçince gol sayılır
+- **Sahipli top gol**: `hasBall` ayarlıyken top kale çizgisini geçerse gol sayılır (ayrı kontrol bloğu)
 - **Özel oda maçı çıkışı**: Oyuncu maçtan çıkınca `room_leave` RPC → oda Supabase'den silinir; rakip otomatik lobiye döner
 - **createRoom maxPlayers**: 1v1=2, 2v2=4, 3v3=6, 4v4=8, 5v5=10 — her takım maks `maxPlayers/2` oyuncu
-- **Lobi ayrılma yayını**: Guest ayrılınca `player_left_lobby` broadcast → diğer oyuncular takım listesini anında günceller (postgres_changes bağımsız)
+- **Lobi ayrılma yayını**: Guest ayrılınca `player_left_lobby` broadcast → diğer oyuncular takım listesini anında günceller
 - **Yazıyor göstergesi**: Canvas üzerinde konuşan oyuncunun başında animasyonlu speech bubble gösterilir
-- **Hız tabanlı extrapolasyon**: Paket gelince `receivedAt` ile 0.28 lerp faktörü — uzak oyuncu hareketi pürüzsüz
 
 ## GitHub Yayınlama
 
@@ -225,6 +227,25 @@ bash github-sync.sh push "NovaBall: güncelleme"
 ```
 
 ## Sürüm Geçmişi
+
+### v0.1.8 — Ghost Player Düzeltmesi, Guest Titreme Giderme, MainMenu Parlaklık & Landing Güncelleme (28 Haziran 2026)
+
+> Maçtan ayrılan oyuncu artık canvas'ta kalmıyor. Guest oyuncuların titreme/kasma sorunu köklü fizik mimarisi değişikliğiyle giderildi. Ana menü daha parlak ve okunabilir. Landing Page FAQ hataları düzeltildi.
+
+#### 🐛 Hata Düzeltmeleri
+- **Ghost player düzeltildi**: `player_left` handler artık oyuncuyu `g.players`, `g.remoteTargets`, `g.inputs`'tan kaldırır; top sahipliğini temizler. `game_state` handler'ına da temizlik eklendi — beklenmedik disconnect'te de kaybolur.
+- **Guest titreme/kasma kökten giderildi**: `physicsStep`'e `shouldMove` guard eklendi — misafir modunda yalnızca lokal oyuncunun fiziği çalışır; uzak oyuncular yanlış input tabanlı fizik yerine saf lerp ile hareket eder. Çift-fizik jitter'ı tamamen ortadan kalktı.
+
+#### 🌐 Ağ / Performans
+- Host WebSocket sync hızı: 33ms → 25ms (~30fps → ~40fps)
+- Uzak oyuncu lerp faktörü: 0.28 → 0.32
+- Top lerp faktörü: 0.18 → 0.22
+
+#### 🎨 Arayüz
+- **MainMenu parlaklık**: Arka plan gradient aydınlatıldı, tüm kart border/bg opacity artırıldı (Özel Oda, Serbest Oyun, Leaderboard, Reviews), alt metin kontrast iyileştirildi.
+- **LandingPage FAQ düzeltildi**: "Kaybetmek RP düşürmez" yanlış bilgisi düzeltildi — kaybedince −10–20 RP, maçtan kaçınca −15 RP. Güvenlik FAQ sorusu eklendi. Özellikler: "AI Rakip" → "Güvenli Altyapı".
+
+---
 
 ### v0.1.4 — Gol & Misafir Kasma Düzeltmeleri, Discord İkonu, Replit Geçişi (19 Haziran 2026)
 
