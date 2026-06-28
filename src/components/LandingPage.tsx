@@ -57,8 +57,8 @@ const FEATURES = [
   },
   {
     icon: <Shield size={22} />,
-    title: "AI Rakip",
-    desc: "Çevrimiçi olmak istemiyorsan? Yerel AI modunda tek başına antrenman yap.",
+    title: "Güvenli Altyapı",
+    desc: "E-posta gizliliği korumalı. Hesap verilerin güvende — kimse e-posta adresini göremez.",
     color: "#f97316",
   },
   {
@@ -79,9 +79,10 @@ const STEPS = [
 const FAQ = [
   { q: "NovaBall ücretsiz mi?",             a: "Evet, tamamen ücretsiz. Hesap aç ve hemen oyna." },
   { q: "Mobilde çalışıyor mu?",             a: "Evet. Yatay ekranda dokunmatik joystick ve butonlarla tam oyun deneyimi sunar." },
-  { q: "Rank puanı nasıl kazanılır?",       a: "Ranked maçları kazanarak RP kazanırsın. Kaybetmek RP düşürmez." },
-  { q: "Özel oda maçları puanı etkiliyor mu?", a: "Hayır. Özel oda maçları serbest moddur, RP verilmez." },
-  { q: "Yavaş internet bağlantısında oynanabilir mi?", a: "Evet. Supabase fallback ile düşük bant genişliğinde bile çalışır." },
+  { q: "Rank puanı nasıl kazanılır veya kaybedilir?", a: "Kazanınca +10–25 RP alırsın (gollerine göre). Kaybedince −10–20 RP düşer. Maçtan kaçarsan −15 RP cezası." },
+  { q: "Özel oda maçları puanı etkiliyor mu?", a: "Hayır. Özel oda maçları serbest moddur, RP verilmez veya alınmaz." },
+  { q: "Hesabım güvende mi?",               a: "Evet. E-posta adreslerin gizlidir; başka oyuncular göremez. Şifreler güvenli şekilde saklanır." },
+  { q: "Yavaş internet bağlantısında oynanabilir mi?", a: "Evet. Adaptif WebSocket + Supabase fallback sayesinde düşük bant genişliğinde bile oynanabilir." },
 ];
 
 // ─── Floating Ball ────────────────────────────────────────────────────────────

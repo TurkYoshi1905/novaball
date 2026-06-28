@@ -19,7 +19,7 @@ import { createRoomConnection, type RoomConnection } from "../lib/wsSync";
 
 const FRAME_MS      = 1000 / 60;
 // Adaptif sync hızları: WebSocket rate limit yoktur; Supabase fallback'te daha yavaş gönderim
-const SYNC_MS_WS    = 33;   // Host ~30fps durum yayını (WebSocket)
+const SYNC_MS_WS    = 25;   // Host ~40fps durum yayını (WebSocket) — daha az jitter
 const SYNC_MS_SB    = 50;   // Host ~20fps durum yayını (Supabase fallback)
 const INPUT_MS_WS   = 16;   // Client ~60fps girdi yayını (WebSocket)
 const INPUT_MS_SB   = 30;   // Client ~33fps girdi yayını (Supabase fallback)
@@ -265,33 +265,37 @@ export function useMultiplayerPhysics({
     // ── Her oyuncu için hareket + şut şarjı ──────────────────────────────
     for (const p of gr.players) {
       const inp = gr.inputs[p.username] ?? { dx: 0, dy: 0, shoot: false, sprint: false };
-      const sprinting = inp.sprint && p.stamina > STAMINA_SPRINT_MIN;
-      p.stamina = clamp(p.stamina + (sprinting ? -STAMINA_DRAIN : STAMINA_RECOVER), 0, STAMINA_MAX);
-      const maxSpeed = PLAYER_MAX_SPEED * (sprinting ? SPRINT_SPEED_MULT : 1);
-      const accel    = PLAYER_ACCEL    * (sprinting ? SPRINT_ACCEL_MULT : 1);
+      // Misafir modunda (localPlayer ayarlı): sadece lokal oyuncunun fiziği çalıştırılır.
+      // Uzak oyuncuların konumu RAF loop'taki lerp ile yönetilir; çift-fizik titremesini önler.
+      const shouldMove = localPlayer === null || p.username === localPlayer;
+      const sprinting  = shouldMove ? (inp.sprint && p.stamina > STAMINA_SPRINT_MIN) : false;
+      if (shouldMove) {
+        p.stamina = clamp(p.stamina + (sprinting ? -STAMINA_DRAIN : STAMINA_RECOVER), 0, STAMINA_MAX);
+        const maxSpeed = PLAYER_MAX_SPEED * (sprinting ? SPRINT_SPEED_MULT : 1);
+        const accel    = PLAYER_ACCEL    * (sprinting ? SPRINT_ACCEL_MULT : 1);
 
-      p.vx += inp.dx * accel; p.vy += inp.dy * accel;
-      const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-      if (spd > maxSpeed) { p.vx = p.vx / spd * maxSpeed; p.vy = p.vy / spd * maxSpeed; }
-      p.vx *= PLAYER_FRICTION; p.vy *= PLAYER_FRICTION;
+        p.vx += inp.dx * accel; p.vy += inp.dy * accel;
+        const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (spd > maxSpeed) { p.vx = p.vx / spd * maxSpeed; p.vy = p.vy / spd * maxSpeed; }
+        p.vx *= PLAYER_FRICTION; p.vy *= PLAYER_FRICTION;
 
-      // Yön güncelle (hareket ediyorsa)
-      const mv = Math.sqrt(p.vx ** 2 + p.vy ** 2);
-      if (mv > 0.3) { gr.facingX[p.username] = p.vx / mv; gr.facingY[p.username] = p.vy / mv; }
+        // Yön güncelle (hareket ediyorsa)
+        const mv = Math.sqrt(p.vx ** 2 + p.vy ** 2);
+        if (mv > 0.3) { gr.facingX[p.username] = p.vx / mv; gr.facingY[p.username] = p.vy / mv; }
 
-      // Saha sınırlarına sabitle (kale bölgesi hariç — top var orada)
-      p.x = clamp(safe(p.x + p.vx), FIELD_LEFT + PLAYER_RADIUS, FIELD_RIGHT - PLAYER_RADIUS);
-      p.y = clamp(safe(p.y + p.vy), FIELD_TOP  + PLAYER_RADIUS, FIELD_BOTTOM - PLAYER_RADIUS);
+        // Saha sınırlarına sabitle (kale bölgesi hariç — top var orada)
+        p.x = clamp(safe(p.x + p.vx), FIELD_LEFT + PLAYER_RADIUS, FIELD_RIGHT - PLAYER_RADIUS);
+        p.y = clamp(safe(p.y + p.vy), FIELD_TOP  + PLAYER_RADIUS, FIELD_BOTTOM - PLAYER_RADIUS);
 
-      // ── Kick-off sınırı ─────────────────────────────────────────────────────
-      // Gol atan takım, karşı takım topa değene kadar orta çizgiyi geçemez
-      if (gr.kickoffBlockTeam === "red" && p.team === "red" && p.x > CENTER_X - PLAYER_RADIUS) {
-        p.x = CENTER_X - PLAYER_RADIUS;
-        if (p.vx > 0) p.vx = 0;
-      }
-      if (gr.kickoffBlockTeam === "blue" && p.team === "blue" && p.x < CENTER_X + PLAYER_RADIUS) {
-        p.x = CENTER_X + PLAYER_RADIUS;
-        if (p.vx < 0) p.vx = 0;
+        // ── Kick-off sınırı ───────────────────────────────────────────────────
+        if (gr.kickoffBlockTeam === "red" && p.team === "red" && p.x > CENTER_X - PLAYER_RADIUS) {
+          p.x = CENTER_X - PLAYER_RADIUS;
+          if (p.vx > 0) p.vx = 0;
+        }
+        if (gr.kickoffBlockTeam === "blue" && p.team === "blue" && p.x < CENTER_X + PLAYER_RADIUS) {
+          p.x = CENTER_X + PLAYER_RADIUS;
+          if (p.vx < 0) p.vx = 0;
+        }
       }
 
       // ── Şut şarjı — yalnızca gerçek input sahibi oyuncular için ─────────────
@@ -789,20 +793,20 @@ export function useMultiplayerPhysics({
             const errX = sp.x - lp.x, errY = sp.y - lp.y;
             const err  = Math.sqrt(errX * errX + errY * errY);
             if (err > 100) {
-              // Çok büyük sapma (duvar/gol teleport): anlık snap + hız senkronu
               lp.x = sp.x; lp.y = sp.y;
               lp.vx = sp.vx; lp.vy = sp.vy;
             } else if (err > 25) {
-              // Orta sapma: çok hafif çekiş — titremeye yol açmayacak kadar yavaş
               lp.x += errX * 0.06; lp.y += errY * 0.06;
-              // Hız güncellenmez — client prediction devam etsin
             }
-            // < 25px sapma: hiçbir şey yapma — client prediction yeterince doğru
           } else {
-            // Uzak oyuncular: hedefi kaydet, RAF loop'ta her frame'de yumuşak lerp uygulanır (60fps akıcı)
+            // Uzak oyuncular: hedefi kaydet, RAF loop'ta her frame'de lerp uygulanır
             g.remoteTargets[sp.username] = { x: sp.x, y: sp.y, vx: sp.vx, vy: sp.vy, receivedAt: Date.now() };
           }
         }
+        // Host state'inde artık olmayan oyuncuları kaldır (çıkış/disconnect)
+        g.players = g.players.filter(lp =>
+          lp.username === localUsername || state.players.some(sp => sp.username === lp.username)
+        );
       });
     }
 
@@ -828,10 +832,15 @@ export function useMultiplayerPhysics({
       else g.typingSet.delete(payload.username);
     });
 
-    // Oyuncu maçtan ayrıldı (özel oda) — sohbete sistem mesajı yaz
+    // Oyuncu maçtan ayrıldı — canvas'tan kaldır + sohbet sistemi mesajı
     conn.on<{ username: string; displayName: string }>("player_left", payload => {
       const g = grRef.current; if (!g) return;
+      // Oyuncuyu fizik ve canvas'tan temizle
+      g.players = g.players.filter(p => p.username !== payload.username);
+      delete g.remoteTargets[payload.username];
+      delete g.inputs[payload.username];
       g.typingSet.delete(payload.username);
+      if (g.hasBall === payload.username) g.hasBall = null;
       const sysMsg: ChatMessage = {
         id: crypto.randomUUID(), username: "", displayName: "",
         text: `${payload.displayName} maçtan ayrıldı.`, type: "system", ts: Date.now(),
@@ -917,8 +926,8 @@ export function useMultiplayerPhysics({
               g.ball.vx = g.ballTarget.vx; g.ball.vy = g.ballTarget.vy;
             } else if (bErr > 15) {
               // Orta sapma → hafif pozisyon çekişi; hızı güncelleme (jitter önleme)
-              g.ball.x += (g.ballTarget.x - g.ball.x) * 0.18;
-              g.ball.y += (g.ballTarget.y - g.ball.y) * 0.18;
+              g.ball.x += (g.ballTarget.x - g.ball.x) * 0.22;
+              g.ball.y += (g.ballTarget.y - g.ball.y) * 0.22;
               // Hız: sadece büyük hız farkı varsa düzelt
               const dvx = g.ballTarget.vx - g.ball.vx;
               const dvy = g.ballTarget.vy - g.ball.vy;
@@ -940,8 +949,8 @@ export function useMultiplayerPhysics({
           const elapsed = Math.min((Date.now() - t.receivedAt) / FRAME_MS, 8);
           const predX = t.x + t.vx * elapsed;
           const predY = t.y + t.vy * elapsed;
-          p.x  += (predX - p.x) * 0.28;
-          p.y  += (predY - p.y) * 0.28;
+          p.x  += (predX - p.x) * 0.32;
+          p.y  += (predY - p.y) * 0.32;
           p.vx  = t.vx; p.vy = t.vy;
         }
         const now = Date.now();

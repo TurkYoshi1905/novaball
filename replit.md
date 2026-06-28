@@ -401,5 +401,7 @@ bash github-sync.sh push "NovaBall: güncelleme"
 | 3 | `20260618_004_room_leave_fix.sql` | room_leave JSONB düzeltmesi |
 | 4 | `20260619_005_reviews_comments.sql` | Yorum & değerlendirme tabloları |
 | 5 | `20260619_006_reviews_rls_fix.sql` | RLS `auth.users` → `auth.jwt()` düzeltmesi |
+| 6 | `20260619_007_security_hardening.sql` | Güvenlik sertleştirme: get_email_by_username kaldırma, verify_username_email ekleme, hatalı RLS politikaları temizleme |
+| 7 | `20260619_008_drop_players_email.sql` | **KRİTİK**: players.email kolonu kaldırıldı; verify_username_email artık auth.users'dan okur; create_player yeni imza |
 
-> **Not**: İlk kez kuruyorsan 1 → 5 sırasıyla çalıştır. Sadece review 42501 hatasını düzeltmek istiyorsan yalnızca **5** numaralı dosyayı çalıştır yeterli.
+> **Not**: İlk kez kuruyorsan 1 → 7 sırasıyla çalıştır. Sadece güvenlik düzeltmelerini uygulamak istiyorsan **6 → 7** sırasıyla çalıştır.

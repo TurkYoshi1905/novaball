@@ -36,25 +36,25 @@ export default function MainMenu({
 
   return (
     <div className="novaball-screen flex flex-col min-h-[100dvh] relative overflow-hidden"
-      style={{ background: "linear-gradient(160deg,#060f22 0%,#080f1c 50%,#06101a 100%)" }}>
+      style={{ background: "linear-gradient(160deg,#071628 0%,#0a1424 50%,#071620 100%)" }}>
 
       {/* ── Background ──────────────────────────────────────── */}
       <div className="absolute inset-0 pointer-events-none">
         {/* Bright center glow */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] rounded-full"
-          style={{ background: "radial-gradient(ellipse,rgba(26,92,255,0.14) 0%,transparent 65%)" }} />
-        {/* Field circle — more visible */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[560px] rounded-full"
+          style={{ background: "radial-gradient(ellipse,rgba(26,92,255,0.22) 0%,transparent 65%)" }} />
+        {/* Field circle */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full border"
-          style={{ borderColor: "rgba(68,150,255,0.08)" }} />
+          style={{ borderColor: "rgba(68,150,255,0.14)" }} />
         {/* Field center line */}
         <div className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2"
-          style={{ background: "linear-gradient(to bottom,transparent,rgba(68,150,255,0.07) 25%,rgba(68,150,255,0.07) 75%,transparent)" }} />
+          style={{ background: "linear-gradient(to bottom,transparent,rgba(68,150,255,0.12) 25%,rgba(68,150,255,0.12) 75%,transparent)" }} />
         {/* Green pitch bottom */}
         <div className="absolute bottom-0 left-0 right-0 h-56"
-          style={{ background: "linear-gradient(to top,rgba(34,197,94,0.07),transparent)" }} />
+          style={{ background: "linear-gradient(to top,rgba(34,197,94,0.1),transparent)" }} />
         {/* Blue top ambient */}
         <div className="absolute top-0 left-0 right-0 h-64"
-          style={{ background: "linear-gradient(to bottom,rgba(26,92,255,0.1),transparent)" }} />
+          style={{ background: "linear-gradient(to bottom,rgba(26,92,255,0.15),transparent)" }} />
         <div className="orb orb-1" />
         <div className="orb orb-2" />
       </div>
@@ -129,8 +129,8 @@ export default function MainMenu({
         <button onClick={onShowRanks}
           className="w-full max-w-xl rounded-2xl px-5 py-4 flex items-center gap-4 transition-all group"
           style={{
-            background: "rgba(255,255,255,0.07)",
-            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(255,255,255,0.09)",
+            border: "1px solid rgba(255,255,255,0.20)",
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)"; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)"; }}>
@@ -217,9 +217,9 @@ export default function MainMenu({
           <button onClick={onCustomRooms}
             className="relative overflow-hidden rounded-2xl p-5 flex flex-col gap-3 transition-all active:scale-[0.97] group text-left"
             style={{
-              background: "linear-gradient(135deg,rgba(139,92,246,0.2) 0%,rgba(109,60,220,0.1) 100%)",
-              border: "1.5px solid rgba(139,92,246,0.4)",
-              boxShadow: "0 4px 24px rgba(139,92,246,0.15)",
+              background: "linear-gradient(135deg,rgba(139,92,246,0.28) 0%,rgba(109,60,220,0.16) 100%)",
+              border: "1.5px solid rgba(139,92,246,0.55)",
+              boxShadow: "0 4px 28px rgba(139,92,246,0.25)",
             }}>
             <div className="absolute top-0 left-0 right-0 h-px"
               style={{ background: "linear-gradient(90deg,transparent,rgba(167,139,250,0.6),transparent)" }} />
@@ -239,9 +239,9 @@ export default function MainMenu({
           <button onClick={onPlay}
             className="relative overflow-hidden rounded-2xl p-5 flex flex-col gap-3 transition-all active:scale-[0.97] group text-left"
             style={{
-              background: "linear-gradient(135deg,rgba(34,197,94,0.16) 0%,rgba(16,185,129,0.08) 100%)",
-              border: "1.5px solid rgba(34,197,94,0.35)",
-              boxShadow: "0 4px 24px rgba(34,197,94,0.1)",
+              background: "linear-gradient(135deg,rgba(34,197,94,0.22) 0%,rgba(16,185,129,0.12) 100%)",
+              border: "1.5px solid rgba(34,197,94,0.50)",
+              boxShadow: "0 4px 28px rgba(34,197,94,0.18)",
             }}>
             <div className="absolute top-0 left-0 right-0 h-px"
               style={{ background: "linear-gradient(90deg,transparent,rgba(74,222,128,0.6),transparent)" }} />
@@ -262,9 +262,9 @@ export default function MainMenu({
         <button onClick={onShowLeaderboard}
           className="w-full max-w-xl relative overflow-hidden rounded-2xl px-5 py-4 flex items-center gap-4 transition-all active:scale-[0.98] group"
           style={{
-            background: "linear-gradient(135deg,rgba(250,204,21,0.14) 0%,rgba(234,179,8,0.06) 100%)",
-            border: "1.5px solid rgba(250,204,21,0.32)",
-            boxShadow: "0 4px 24px rgba(250,204,21,0.1)",
+            background: "linear-gradient(135deg,rgba(250,204,21,0.20) 0%,rgba(234,179,8,0.10) 100%)",
+            border: "1.5px solid rgba(250,204,21,0.48)",
+            boxShadow: "0 4px 28px rgba(250,204,21,0.18)",
           }}>
           <div className="absolute top-0 left-0 right-0 h-px"
             style={{ background: "linear-gradient(90deg,transparent,rgba(250,204,21,0.65),transparent)" }} />
@@ -276,7 +276,7 @@ export default function MainMenu({
           </div>
           <div className="relative flex flex-col flex-1 text-left min-w-0">
             <p className="text-white font-black text-[15px] group-hover:text-white transition-colors">Lider Tablosu</p>
-            <p className="text-white/55 text-[12px] font-semibold">En iyi oyuncuları gör</p>
+            <p className="text-white/70 text-[12px] font-semibold">En iyi oyuncuları gör</p>
           </div>
           <div className="relative flex items-center gap-1.5 flex-shrink-0">
             <Star size={12} fill="#facc15" className="text-[#facc15]" />
@@ -291,11 +291,11 @@ export default function MainMenu({
           onClick={onShowReviews}
           className="group relative w-full max-w-xl flex items-center gap-4 px-5 py-4 rounded-2xl transition-all active:scale-[0.98] text-left overflow-hidden"
           style={{
-            background: "linear-gradient(135deg,rgba(167,139,250,0.08),rgba(139,92,246,0.05))",
-            border: "1px solid rgba(167,139,250,0.2)",
+            background: "linear-gradient(135deg,rgba(167,139,250,0.14),rgba(139,92,246,0.08))",
+            border: "1px solid rgba(167,139,250,0.32)",
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(167,139,250,0.4)"; (e.currentTarget as HTMLElement).style.background = "linear-gradient(135deg,rgba(167,139,250,0.14),rgba(139,92,246,0.09))"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(167,139,250,0.2)"; (e.currentTarget as HTMLElement).style.background = "linear-gradient(135deg,rgba(167,139,250,0.08),rgba(139,92,246,0.05))"; }}>
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(167,139,250,0.55)"; (e.currentTarget as HTMLElement).style.background = "linear-gradient(135deg,rgba(167,139,250,0.20),rgba(139,92,246,0.13))"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(167,139,250,0.32)"; (e.currentTarget as HTMLElement).style.background = "linear-gradient(135deg,rgba(167,139,250,0.14),rgba(139,92,246,0.08))"; }}>
           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
             style={{ background: "linear-gradient(135deg,rgba(167,139,250,0.06),transparent)" }} />
           <div className="relative w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -304,7 +304,7 @@ export default function MainMenu({
           </div>
           <div className="relative flex flex-col flex-1 text-left min-w-0">
             <p className="text-white font-black text-[15px] group-hover:text-white transition-colors">Yorum Yap & Değerlendir</p>
-            <p className="text-white/55 text-[12px] font-semibold">Toplulukla görüşlerini paylaş</p>
+            <p className="text-white/70 text-[12px] font-semibold">Toplulukla görüşlerini paylaş</p>
           </div>
           <div className="relative flex items-center gap-1 flex-shrink-0">
             {[1,2,3,4,5].map(i => (
